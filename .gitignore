@@ -1,0 +1,35 @@
+# Environment / secrets — never commit these
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Node / React / Vite (frontend/)
+node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python / FastAPI (backend/)
+__pycache__/
+*.py[cod]
+*.egg-info/
+backend/.venv/
+backend/venv/
+.pytest_cache/
+.mypy_cache/
+
+# Database (if you run Postgres locally via Docker with a data volume)
+*.sqlite3
+pgdata/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# OS noise
+.DS_Store
+Thumbs.db
