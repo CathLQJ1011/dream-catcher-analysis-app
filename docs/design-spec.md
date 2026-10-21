@@ -175,7 +175,7 @@ Use them in this priority order. Stacking all of them on one screen turns into n
 | **Ghost button** | Pill, transparent, hairline border, `text-secondary` → `text-primary` on hover | 12f6 "Begin Now" |
 | **Mic button (Capture)** | 72px pill/circle with the Dream Orb glow behind it; pulses with audio level | 4ad3 |
 | **Glass card** | `surface-glass`, 24px radius, hairline border, 24px padding | 4ad3, fc7e |
-| **Dream card** (archive/list) | Catalog plate: orb centered, `DREAM — 047` top-left mono, date bottom-left, tradition tags bottom-right | e205 |
+| **Dream card** (archive/list) | Catalog plate: `DREAM — 047` top-left mono; orb centered in its own area (never behind text), size = vividness, light direction derived from the dream number; **top symbol as the headline** in serif (display size, title if long) with an italic gloss below; date bottom-left, tradition tags bottom-right | e205 |
 | **Emotion chips** | Pill chips, each with a small orb dot in its emotion color; selected = glass fill + glow | fc7e check-in |
 | **Emotion map** | 2D field (valence × arousal), labeled axes in `meta` mono at the four edges; drag an orb to tag | 6577 |
 | **Calendar** | Month grid on `bg`; each day = small orb (size = vividness, color = emotion); today = hairline ring | fc7e strip, e205 |
