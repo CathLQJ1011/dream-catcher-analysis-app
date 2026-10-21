@@ -24,7 +24,7 @@ Most of the 14 references share five traits. These five traits are the design la
 |---|---|---|---|
 | 1 | **The glowing orb / aura**: a soft-edged luminous form centered in empty space | 12f6, 6577, 71a3, d69d, e205, fc7e, 7733 | Gives each dream a body. This becomes the signature motif (§5). |
 | 2 | **Near-black ground with one saturated light source** | 12f6, 4ad3, 55e7, 6577, 904d, c993 | Calm at night and easy on the eyes on waking. Color reads as *light*, not paint. |
-| 3 | **Ultramarine / Klein blue as the hero hue** | 3fae, 4ad3, 4f0c, 7733, c993, 904d | It's the most frequent color on the board, and it reads as dreamlike, deep and introspective. |
+| 3 | **Cool blue-violet light** | 3fae, 4ad3, 4f0c, 703b, 7733, c993, e205 | The most frequent color family on the board. **The app's hero hue is purple (violet)**, a deliberate choice; blue stays as a supporting color for calm. |
 | 4 | **Analog imperfection**: grain, halftone, dither, scanlines | 3fae, 55e7, 6577, 7733, 904d, c993, d69d | Suggests memory loss and fading fidelity, the texture of remembering a dream. |
 | 5 | **Serif + sans/mono contrast**, often an italic serif accent | 12f6, 904d, d69d, 55e7, e205 | Literary voice for dream content, technical voice for metadata. |
 
@@ -55,39 +55,41 @@ A secondary warm thread (ember red, orange, magenta in 12f6, 55e7, 6577, fc7e) i
 
 | Token | Hex | Use | Contrast on bg |
 |---|---|---|---|
-| `bg` | `#07080C` | App background: near-black with a blue cast, never pure `#000` | — |
-| `bg-raised` | `#0F111A` | Panels, sheets, nav bar | — |
+| `bg` | `#0A0810` | App background: near-black with a violet cast, never pure `#000` | — |
+| `bg-raised` | `#14101D` | Panels, sheets, nav bar | — |
 | `surface-glass` | `rgba(255,255,255,0.06)` + 24px backdrop blur | Floating cards over orbs/gradients | — |
 | `border-hairline` | `rgba(255,255,255,0.10)` | 1px rules, card outlines, outline frames | — |
-| `text-primary` | `#EDEEF3` | Dream text, headings | 17.3 : 1 |
-| `text-secondary` | `#A3A7B7` | Body support, labels | 8.4 : 1 |
+| `text-primary` | `#EDEEF3` | Dream text, headings | 17.2 : 1 |
+| `text-secondary` | `#A3A7B7` | Body support, labels | 8.3 : 1 |
 | `text-muted` | `#7A7F94` | Metadata, timestamps (minimum for readable text) | 5.0 : 1 |
-| `accent` (Lucid Blue) | `#2A3BFF` | Glows, fills, primary button fill, orbs. **Not for text on dark** | 3.0 : 1 |
-| `accent-soft` (Periwinkle) | `#8EA2FF` | Links, active states, blue text on dark | 8.4 : 1 |
-| `ember` | `#FF5A36` | Warm accent; high-arousal emotion; destructive actions | 6.5 : 1 |
+| `accent` (Lucid Violet) | `#6B3BFF` | Glows, fills, primary button fill, orbs. **Not for text on dark** | 3.5 : 1 |
+| `accent-soft` (Lavender) | `#B49CFF` | Links, active states, purple text on dark | 8.7 : 1 |
+| `ember` | `#FF5A36` | Warm accent; high-arousal emotion; destructive actions | 6.4 : 1 |
 
 **Rule:** color arrives as *light*: glows, gradients and orbs on a dark field. Flat, saturated color blocks are rare, used for one hero element per screen at most (the navy block in 3fae, the orange card in 55e7).
 
 ### 3.2 Emotion spectrum (orb colors)
 
-Each dream's orb is tinted by its dominant emotion. These are starting proposals, and **your own synesthetic associations should replace them**: this palette is the most personal part of the app.
+Each dream's orb is tinted by its dominant emotion. **v1 palette: drawn from the moodboard itself.** Each hue is taken from the reference where that color carries that feeling. Hex values are read by eye from the images, so tune them on `/styleguide`. Your own synesthetic associations can replace any row later.
 
-| Emotion | Proposed hue | Orb gradient (center → edge) |
-|---|---|---|
-| Calm / peace | Periwinkle | `#C9D3FF → #6F82FF` |
-| Longing / nostalgia | Lilac | `#E6D9FF → #9B7BFF` |
-| Wonder / lucidity | Lucid Blue + white core | `#FFFFFF → #2A3BFF` |
-| Joy / warmth | Amber | `#FFE3A3 → #FF9F2E` |
-| Fear / threat | Ember | `#FFB199 → #E8361C` |
-| Unease / uncanny | Magenta | `#FFB8F0 → #C03CE0` |
-| Sadness / heaviness | Deep teal | `#9FD0D6 → #1F5C66` |
-| Neutral / unclear | Ash | `#D7D9E0 → #6B7085` |
+| Emotion | Hue | Orb gradient (center → edge) | Source |
+|---|---|---|---|
+| Calm / peace | Periwinkle grain | `#D4DCFF → #7C93F2` | 7733: soft cornflower blurs, the quietest images on the board |
+| Wonder / lucidity | Lucid violet, white core | `#FFFFFF → #6B3BFF` | c993, 4f0c bloom shape, shifted to the app's violet; e205's violet orb |
+| Longing / nostalgia | Dusky mauve | `#E9D3F2 → #7E5A9B` | 703b: pink light fading into dusk, muted so it reads apart from lucid violet |
+| Joy / warmth | Amber glow | `#FFD08A → #F07A1A` | fc7e: warm, glowing orange field |
+| Fear / threat | Crimson ember | `#FF9A80 → #B8121B` | 12f6, 65a7: a single red light on black |
+| Unease / uncanny | Hot magenta | `#FF8FD8 → #D42A9E` | 55e7: neon magenta rim around the orange-red ring |
+| Sadness / heaviness | Nocturne teal | `#BFE3EA → #234A52` | 904d: green-grey night, cold glow |
+| Neutral / unclear | Slate ash | `#D5D9E2 → #5E6678` | 65a7: blurred slate field behind the mood orb |
+
+**What the board says overall:** about half the references are cool blue-violet light. Violet is the brand color and marks lucidity/wonder; blue (periwinkle) stays for calm, so the two stay easy to tell apart. Warm colors (crimson, orange, magenta) show up only as a single concentrated light on black, which supports keeping them for high-arousal emotions. 71a3's pastels (peach, sky, mint) don't fit the dark theme and are kept for Morning mode (§11).
 
 Mixed emotions blend two orb gradients (as in e205's two-tone spheres) instead of picking one.
 
 ### 3.3 Gradients
 
-- **Night gradient** (screen backgrounds): vertical, `#2A3BFF` at ~18% opacity at the top fading to `bg` by 60% height (4ad3).
+- **Night gradient** (screen backgrounds): vertical, `#6B3BFF` at ~18% opacity at the top fading to `bg` by 60% height (4ad3).
 - **Bloom**: a radial accent behind hero content, 40–60% of the viewport, heavily blurred (c993, 703b).
 - No multi-stop rainbow gradients on UI chrome. Iridescence lives only *inside* orbs.
 
@@ -99,7 +101,7 @@ Mixed emotions blend two orb gradients (as in e205's two-tone spheres) instead o
 
 | Role | Proposal | Why | CJK partner |
 |---|---|---|---|
-| **Display / dream text** (serif) | *Instrument Serif* (roman + italic) | Elegant, high-contrast, true italic: the 12f6 / d69d voice | *Noto Serif SC* |
+| **Display / dream text** (serif) | *Instrument Serif* (roman + italic). **Chosen for v1.** | Elegant, high-contrast, true italic: the 12f6 / d69d voice | *Noto Serif SC* |
 | **UI / body** (sans) | *Inter* or *Geist* | Neutral, legible at small sizes, pairs cleanly with the serif | *Noto Sans SC* |
 | **Metadata** (mono) | *Geist Mono* or *JetBrains Mono* | Catalog numbers, timestamps, axis labels (e205, 6577, c993) | *Noto Sans SC* |
 
@@ -216,7 +218,7 @@ The moodboard leans dark, but e205 and 71a3 give a clean light counterpart:
 
 - `bg` off-white `#F5F3EE` (warm paper, not pure white), `text-primary` `#14151C` (16.4 : 1), `text-muted` `#5B5F6E` (5.7 : 1).
 - Orbs keep their spectrum colors but drop the outer glow in favor of a soft chromatic halo (e205).
-- Lucid Blue `#2A3BFF` *is* legible as text on this background (6.0 : 1).
+- Lucid Violet `#6B3BFF` *is* legible as text on this background (5.1 : 1).
 - Grain stays; glass becomes `rgba(255,255,255,0.6)` with blur.
 
 **Recommendation:** ship dark only for v1 and treat Morning as a polish item.
@@ -237,8 +239,8 @@ The moodboard leans dark, but e205 and 71a3 give a clean light counterpart:
 
 ## 13. Decisions still yours to make
 
-- [ ] Replace the emotion spectrum (§3.2) with your own color associations
-- [ ] Choose the serif: Instrument Serif vs. alternatives (Fraunces, Cormorant Garamond); test with Chinese
+- [x] Emotion spectrum (§3.2): v1 taken from the moodboard; replace with personal associations later
+- [x] Serif: Instrument Serif for now (still test with Chinese on `/styleguide`)
 - [ ] Decide what orb **size** encodes (length? vividness? hours slept?)
 - [ ] Pick the default image-generation style: cyanotype/halftone (3fae), soft-focus photographic (904d), or painterly
 - [ ] Confirm dark-only for v1
