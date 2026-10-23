@@ -33,3 +33,6 @@ pgdata/
 # OS noise
 .DS_Store
 Thumbs.db
+
+# Local design exports and Stitch imports (large images, not source)
+design/

@@ -55,6 +55,7 @@ export default {
       // spec's 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96 steps.
       maxWidth: {
         reading: '36rem',
+        tooltip: '15rem',
       },
       backdropBlur: {
         glass: '24px',

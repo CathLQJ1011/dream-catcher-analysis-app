@@ -5,6 +5,8 @@ import { GlassCard } from '@/components/ui/glass-card'
 import { DreamOrb, type OrbState } from '@/components/dream/DreamOrb'
 import { EmotionChip } from '@/components/dream/EmotionChip'
 import { DreamCard } from '@/components/dream/DreamCard'
+import { DreamArt } from '@/components/dream/DreamArt'
+import { SAMPLE_DREAMS } from '@/data/sampleDreams'
 import { EMOTIONS, edge, type Emotion } from '@/lib/emotions'
 import { cn } from '@/lib/utils'
 
@@ -82,6 +84,7 @@ export default function Styleguide() {
         <ColorsSection />
         <TypeSection />
         <OrbSection />
+        <DreamImageSection />
         <ComponentsSection />
         <DataSection />
         <OrnamentSection />
@@ -219,6 +222,26 @@ function OrbSection() {
             <DreamOrb key={s} emotion="calm" size={s} />
           ))}
         </div>
+      </div>
+    </Section>
+  )
+}
+
+function DreamImageSection() {
+  return (
+    <Section index="§5.1" title="Dream images">
+      <p className="max-w-reading text-fg-secondary">
+        Drawn from each dream’s key symbol, lit in the colors of its emotion.
+      </p>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        {SAMPLE_DREAMS.map((d) => (
+          <div key={d.number} className="flex flex-col gap-2">
+            <DreamArt dream={d} />
+            <span className="font-mono text-meta uppercase text-fg-muted">
+              {d.symbol} · {d.emotion}
+            </span>
+          </div>
+        ))}
       </div>
     </Section>
   )

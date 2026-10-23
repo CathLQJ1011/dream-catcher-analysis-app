@@ -139,6 +139,16 @@ Every dream is represented by a soft, glowing orb. It's the app's logo-in-use, t
 - **States:** idle = slow "breathing" (scale 1.00 → 1.03, 6s loop); recording = brightens and pulses with mic input; interpreting = slowly rotating conic shimmer.
 - **Where it appears:** Capture (behind the mic), Dream Detail header, Calendar day cells, Trends scatter/emotion map, loading and empty states.
 
+### 5.1 Dream image style
+
+Each dream's image **draws its key symbol** as a simple, glowing silhouette: water becomes layered waves, a moon a crescent over a horizon, a house a lit window, a door an arch spilling light, lanterns hang from a string, and so on.
+- **Color comes from the dream's emotion:** the sky is the emotion's light fading to `bg`; shapes fill from the emotion's core color to its edge color.
+- Silhouettes, not detailed illustration: soft edges, one glowing copy behind each shape, film grain on top, no text, no faces.
+- No orb in the image; the orb already represents the dream everywhere else.
+- Variations (positions, phases) are seeded by the dream number, so the same dream always gives the same image.
+- A symbol with no motif yet falls back to soft rays of the emotion's light.
+- If an AI image model is used later, its style prompt must reproduce these rules: one key symbol, silhouette style, emotion palette, gradient light, grain.
+
 ---
 
 ## 6. Texture & effects
@@ -165,6 +175,32 @@ Use them in this priority order. Stacking all of them on one screen turns into n
 - **Radius:** 24px cards, 999px pills (buttons, chips, inputs), 12px images. Glass cards may use 28px (4ad3).
 - **Reading width:** dream text is max 36rem wide and centered on desktop. It should read like a page in a book, not a chat bubble.
 
+### 7.1 Layout rules (mobile screens)
+
+These came out of reviewing the Stitch drafts, where every box was sized to the screen and spacing changed from section to section.
+
+1. **One side margin: 24px** on every screen. Nothing touches or runs past the screen edge except horizontal scrollers (chip rows), which bleed to the edge but start aligned to the margin.
+2. **Spacing rhythm:** 8 inside a group (label → value) · 16 between items in a list or row · 24 from a page header to its content · 48 between sections. No other gaps.
+3. **Size boxes to their content, not the screen.** Controls are compact: pills and segmented controls are 36–40px tall and only as wide as their labels. Secondary tools never get a full-width box: **search is an icon in the page header** that expands into a field when tapped.
+4. **Rows before cards.** Lists (dreams, symbols, colors) are plain rows separated by hairlines. A card is only for one focal object, or something floating over an orb or image. Never more than two cards in one phone screen.
+5. **Generous inside, modest outside.** Card padding is 24; text is never closer than 24px to a card edge. If a card feels empty, make the card smaller rather than adding content.
+6. **Page header:** title in `title` serif, left-aligned; one `meta` line under it at most; actions are 40px icon buttons on the right.
+7. **Touch targets ≥ 44px**, even when the visible element is smaller (calendar days, chips).
+8. **Bottom nav** is fixed with the safe-area inset below it; page content gets matching bottom padding so the last row is never hidden.
+
+### 7.2 Patterns lens template
+
+Every lens on Patterns uses the same six slots in the same order, so switching lenses changes only the content, never the layout:
+
+1. **Lens pills** (horizontal scroll) — always on top
+2. **Period** segmented control (7D · 30D · Year) on the left, dream count in `meta` on the right
+3. **One hero chart**, fixed height, drawn directly on the background (no card)
+4. **Three stat tiles** in one row, equal width, same structure: value · label
+5. **✦ Reading**: two or three sentences, phrased as observation ("you might notice…"), ending with how many dreams it's based on
+6. **Detail list** of plain rows (e.g. dreams with the top symbol)
+
+A lens without enough data shows the same slots with a locked hero ("Unlocks after 10 dreams with people in them") instead of a misleading chart.
+
 ---
 
 ## 8. Components
@@ -181,7 +217,7 @@ Use them in this priority order. Stacking all of them on one screen turns into n
 | **Calendar** | Month grid on `bg`; each day = small orb (size = vividness, color = emotion); today = hairline ring | fc7e strip, e205 |
 | **Interpretation panels** | One glass card per tradition, side by side on desktop, swipeable on mobile; tradition name in `meta` mono, reading in `body` sans, quoted symbols in serif italic | — |
 | **Inputs / textarea** | Borderless on `bg-raised`; dream textarea uses the `dream` serif style so writing feels like journaling | — |
-| **Bottom nav (mobile)** | 3 items max (Journal · Capture · Patterns), line icons, active item gets a small glow dot | 6577 |
+| **Bottom nav (mobile)** | Journal · Patterns · **Capture** · Community · Me. Capture is a raised orb button in the center and the only glowing item; the other four are line icons, and the active one gets a small glow dot. See `screens.md` | 6577 |
 
 ### Charts (Trends page)
 
