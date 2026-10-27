@@ -29,3 +29,7 @@
 ### 6. Deleted dreams wait 30 days, then disappear for good
 **Decision:** Deleting a dream moves it to "Recently deleted" for 30 days, after which it is permanently removed. If the dream was shared, its Community copy is removed immediately.
 **Why:** An undo window protects against accidental deletes, like Photos on a phone. Removing the shared copy right away means deleting always stops other people from seeing it, with no delay.
+
+### 7. One shared table for things in a dream, for now
+**Decision:** Symbols, people, places, body parts, media references and colors all live in one `dream_elements` table. Each row has a `kind`, a `value`, an `order`, the "AI suggested / user kept" flags, and the extra details for its kind.
+**Why:** One table means one tagging flow and one AI pipeline, which keeps v1 simple. It's reversible: every row already records its `kind`, so splitting into separate tables later is a routine migration. The API returns each kind as its own list either way, so the screens won't change, and each kind's details are validated strictly so the data stays clean.
