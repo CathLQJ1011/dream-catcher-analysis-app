@@ -1,0 +1,177 @@
+{
+  "about": "Invented test dreams for seeding and for checking symbol matching. None are real dreams. Shapes follow docs/data-model.md. 'expect' lists what matching should and should not find in data/symbols/zhougong.csv.",
+  "user": {
+    "display_name": "Test Dreamer",
+    "email": "test-dreamer@example.test"
+  },
+  "people": [
+    { "key": "sister", "name": "sister", "role": "family", "relation": "younger sister" },
+    { "key": "stranger-train", "name": "stranger on the train", "role": "stranger", "relation": null }
+  ],
+  "dreams": [
+    {
+      "key": "river-teeth",
+      "dreamed_on": "2026-10-03",
+      "source": "voice",
+      "language": "en",
+      "text": "I was swimming in a clear river at night and everything felt quiet. Then my teeth started falling out, one by one, into the water. I panicked, but a white rabbit appeared on the bank and led me to a wooden bridge, and when I crossed it my teeth were back.",
+      "title": "Teeth in the river",
+      "valence": 0,
+      "intensity": 4,
+      "vividness": 0.8,
+      "lucidity": 0,
+      "narrative": "linear",
+      "emotions": [
+        { "position": 1, "emotion": "calm", "intensity": 2 },
+        { "position": 2, "emotion": "fear", "intensity": 4, "note": "when the teeth fell out" },
+        { "position": 3, "emotion": "calm", "intensity": 2, "label": "relieved" }
+      ],
+      "elements": [
+        { "kind": "symbol", "value": "river", "position": 1 },
+        { "kind": "symbol", "value": "teeth falling out", "position": 2 },
+        { "kind": "symbol", "value": "white rabbit", "position": 3 },
+        { "kind": "place", "value": "wooden bridge", "position": 4, "details": { "indoor": false, "public": true, "feeling": "safe" } },
+        { "kind": "body", "value": "teeth", "details": { "part": "teeth", "sensation": "loose, falling", "pain": 0, "integrity": "wounded" } },
+        { "kind": "color", "value": "night blue", "details": { "hex": "#1F2A5C", "share": 60, "warmth": "cool" } },
+        { "kind": "color", "value": "rabbit white", "details": { "hex": "#EEEBF2", "share": 40, "warmth": "neutral" } }
+      ],
+      "events": [],
+      "day_residue": [{ "kind": "academic", "note": "dentist appointment reminder", "days_before": 1 }],
+      "expect": {
+        "tests": "English aliases; an emotional shift (calm → fear → calm); a fear peak that is not a nightmare overall",
+        "matches": ["zg-040 水 (river)", "zg-014 掉牙 (teeth falling out)", "zg-047 兔 (white rabbit)", "zg-030 桥 (bridge)"],
+        "dream_type": "mixed"
+      }
+    },
+    {
+      "key": "old-house-snow",
+      "dreamed_on": "2026-10-09",
+      "source": "text",
+      "language": "zh",
+      "text": "我梦见回到一座老房子里，门自己开了，屋里点着很多蜡烛。妹妹在楼梯上叫我的名字，窗外一直在下雪。我想上楼找她，但楼梯好像越走越长。",
+      "title": "下雪的老房子",
+      "valence": 1,
+      "intensity": 2,
+      "vividness": 0.65,
+      "lucidity": 0,
+      "narrative": "linear",
+      "emotions": [
+        { "position": 1, "emotion": "longing", "intensity": 3, "label": "怀念" },
+        { "position": 1, "emotion": "calm", "intensity": 2 }
+      ],
+      "elements": [
+        { "kind": "place", "value": "老房子", "position": 1, "details": { "indoor": true, "public": false, "cultural_setting": "Chinese family home", "feeling": "familiar, a little sad" } },
+        { "kind": "symbol", "value": "门", "position": 2 },
+        { "kind": "symbol", "value": "蜡烛", "position": 3 },
+        { "kind": "person", "value": "妹妹", "person": "sister", "details": { "description": "calling my name from the stairs" } },
+        { "kind": "place", "value": "楼梯", "position": 4, "details": { "indoor": true, "public": false, "feeling": "endless" } },
+        { "kind": "symbol", "value": "雪", "position": 5 },
+        { "kind": "color", "value": "candle gold", "details": { "hex": "#E6B84A", "share": 45, "warmth": "warm" } },
+        { "kind": "color", "value": "snow white", "details": { "hex": "#F2F4F8", "share": 55, "warmth": "cool" } }
+      ],
+      "events": [],
+      "day_residue": [{ "kind": "family_contact", "note": "video call with my sister", "days_before": 2 }],
+      "expect": {
+        "tests": "Chinese text; mixed emotions at the same position; a recurring person (sister); '门自己开了' matches the classical line that was deliberately omitted (门自开妻有私情), so that reading must never appear",
+        "matches": ["zg-021 房屋 (老房子)", "zg-023 门", "zg-042 灯 (蜡烛)", "zg-022 高楼 (楼梯)", "zg-005 雪"],
+        "must_not_appear": ["any reading about a wife's affair"],
+        "dream_type": "pleasant"
+      }
+    },
+    {
+      "key": "dragon-moon",
+      "dreamed_on": "2026-10-14",
+      "source": "voice",
+      "language": "mixed",
+      "text": "I realized I was dreaming and decided to fly. I flew over the sea until a dragon rose out of the waves, and I rode it up toward the 月亮. The moon was so bright it lit up my hands.",
+      "title": "Riding the dragon",
+      "valence": 2,
+      "intensity": 4,
+      "vividness": 0.95,
+      "lucidity": 3,
+      "narrative": "linear",
+      "emotions": [{ "position": 1, "emotion": "lucid", "intensity": 4, "label": "awe" }, { "position": 1, "emotion": "joy", "intensity": 3 }],
+      "elements": [
+        { "kind": "symbol", "value": "flying", "position": 1 },
+        { "kind": "symbol", "value": "sea", "position": 2 },
+        { "kind": "symbol", "value": "dragon", "position": 3 },
+        { "kind": "symbol", "value": "月亮", "position": 4 },
+        { "kind": "body", "value": "hands", "details": { "part": "hands", "sensation": "glowing", "pain": 0, "integrity": "intact" } },
+        { "kind": "color", "value": "moonlight", "details": { "hex": "#EEEBF2", "share": 50, "warmth": "cool", "synesthesia": false } },
+        { "kind": "color", "value": "deep sea", "details": { "hex": "#14203A", "share": 50, "warmth": "cool" } }
+      ],
+      "events": [],
+      "day_residue": [{ "kind": "media", "note": "watched an animated film about dragons", "days_before": 1 }],
+      "expect": {
+        "tests": "mixed Chinese and English in one dream; lucidity 3; the 天 entry matched by 'fly' rather than the word 天",
+        "matches": ["zg-001 天 (flying)", "zg-040 水 (sea)", "zg-043 龙 (dragon)", "zg-002 日月 (月亮)"],
+        "dream_type": "pleasant"
+      }
+    },
+    {
+      "key": "snake-well",
+      "dreamed_on": "2026-10-17",
+      "source": "text",
+      "language": "en",
+      "text": "A huge snake was chasing me through an empty shopping mall. I ran down an escalator that never ended and fell into a dark well. At the bottom I could hear my sister calling, but I couldn't answer.",
+      "title": "The snake in the mall",
+      "valence": -2,
+      "intensity": 5,
+      "vividness": 0.85,
+      "lucidity": 0,
+      "narrative": "jumping",
+      "spoke": false,
+      "emotions": [
+        { "position": 1, "emotion": "fear", "intensity": 5 },
+        { "position": 2, "emotion": "unease", "intensity": 4, "note": "hearing my sister but unable to answer" }
+      ],
+      "elements": [
+        { "kind": "symbol", "value": "snake", "position": 1 },
+        { "kind": "place", "value": "empty shopping mall", "position": 1, "details": { "indoor": true, "public": true, "feeling": "abandoned" } },
+        { "kind": "place", "value": "well", "position": 2, "details": { "indoor": false, "public": false, "feeling": "trapped" } },
+        { "kind": "person", "value": "sister", "person": "sister", "details": { "description": "voice from above, out of reach" } },
+        { "kind": "color", "value": "mall neon", "details": { "hex": "#E0479E", "share": 30, "warmth": "warm" } },
+        { "kind": "color", "value": "well dark", "details": { "hex": "#141218", "share": 70, "warmth": "neutral" } }
+      ],
+      "events": [{ "kind": "violence", "position": 1, "details": { "type": "threat", "source": "animal", "your_role": "target", "demeanor": "relentless" } }],
+      "links": [{ "to": "old-house-snow", "reason": "same person: sister" }],
+      "day_residue": [{ "kind": "academic", "note": "deadline week", "days_before": 1 }],
+      "expect": {
+        "tests": "a nightmare by the calculation rule (valence -2, intensity 5); the same sister as dream 2 links to one person; a violence event drives a content note if shared; 'mall' and 'escalator' have no 周公 entry; the omitted readings about wives must never appear",
+        "matches": ["zg-058 蛇 (snake)", "zg-024 井 (well)"],
+        "no_match": ["mall", "escalator"],
+        "dream_type": "nightmare",
+        "memories_gentle_mode": "skipped (nightmare)"
+      }
+    },
+    {
+      "key": "exam-cat-lighthouse",
+      "dreamed_on": "2026-10-20",
+      "source": "text",
+      "language": "en",
+      "text": "I was on a phone call in the middle of an exam and nobody seemed to mind. My cat kept walking across the desk and finally caught a mouse under my chair. Through the window I could see a lighthouse turning very slowly.",
+      "title": "Exam with the cat",
+      "valence": 1,
+      "intensity": 2,
+      "vividness": 0.5,
+      "lucidity": 1,
+      "narrative": "fragmented",
+      "emotions": [{ "position": 1, "emotion": "unease", "intensity": 2 }, { "position": 2, "emotion": "joy", "intensity": 2, "label": "amused" }],
+      "elements": [
+        { "kind": "symbol", "value": "phone call", "position": 1 },
+        { "kind": "place", "value": "exam hall", "position": 1, "details": { "indoor": true, "public": true, "feeling": "oddly relaxed" } },
+        { "kind": "symbol", "value": "cat catching a mouse", "position": 2 },
+        { "kind": "symbol", "value": "lighthouse", "position": 3 }
+      ],
+      "events": [],
+      "day_residue": [{ "kind": "academic", "note": "midterm on Thursday", "days_before": 2 }],
+      "expect": {
+        "tests": "false positives: 'lighthouse' contains 'house' but must NOT match 房屋 by substring; 'phone' and 'exam' have no classical entry and should come back as unmatched, not forced; 'cat catching a mouse' should prefer 猫 (猫捕鼠者主得财) over 老鼠",
+        "matches": ["zg-073 猫 (cat catching a mouse)"],
+        "no_match": ["phone call", "exam hall"],
+        "must_not_match": ["zg-021 房屋 (via 'lighthouse')"],
+        "dream_type": "neutral"
+      }
+    }
+  ]
+}
