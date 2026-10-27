@@ -33,3 +33,23 @@
 ### 7. One shared table for things in a dream, for now
 **Decision:** Symbols, people, places, body parts, media references and colors all live in one `dream_elements` table. Each row has a `kind`, a `value`, an `order`, the "AI suggested / user kept" flags, and the extra details for its kind.
 **Why:** One table means one tagging flow and one AI pipeline, which keeps v1 simple. It's reversible: every row already records its `kind`, so splitting into separate tables later is a routine migration. The API returns each kind as its own list either way, so the screens won't change, and each kind's details are validated strictly so the data stays clean.
+
+### 8. Sign-in with email, Google and Apple
+**Decision:** Accounts sign in with email + password, Google, or Apple. Built in Phase 3.
+**Why:** Most people already have a Google or Apple account, which makes signing up at 7am painless; email covers everyone else. Apple needs a paid developer account, so it may follow the other two.
+
+### 9. Dream type is calculated, but the user has the last word
+**Decision:** Nightmare / pleasant / mixed / neutral is worked out from valence and intensity, and the user can change it. A user's choice is never overwritten by a recalculation.
+**Why:** Most people won't label dream types themselves, but the app's guess can be wrong about a feeling only the dreamer knows.
+
+### 10. Emotions get an optional finer label
+**Decision:** Each emotion in a dream is one of the 8 orb emotions, plus an optional word of the user's own ("nostalgic", "guilty").
+**Why:** The 8 keep colors and charts consistent; the label keeps the nuance the dreamer actually felt.
+
+### 11. The same person is the same person across dreams
+**Decision:** People get their own table, so "my sister" in 12 dreams is one person; each dream links to her.
+**Why:** It's what makes the People lens meaningful (who appears most, alongside which feelings), and it matches how I tracked family members in my original codebook.
+
+### 12. Keep the v1 / later split from the data model draft
+**Decision:** The codebook fields stay split as listed in `data-model.md`.
+**Why:** It covers every screen in the prototype and the first Patterns lenses; the rest can be added without restructuring.

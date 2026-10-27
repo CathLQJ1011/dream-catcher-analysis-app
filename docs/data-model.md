@@ -1,6 +1,6 @@
 # Data model (draft)
 
-*A sketch to mark up, not final. It follows the decisions in `decisions.md` (many users, only text and date required, "AI suggested / user kept" on every tag, 30-day delete, one shared `dream_elements` table). Lines starting with ❓ are open questions for you.*
+*A sketch to mark up, not final. It follows the decisions in `decisions.md` (many users, only text and date required, "AI suggested / user kept" on every tag, 30-day delete, one shared `dream_elements` table). All open questions from the first draft are answered; new ones will be marked ❓.*
 
 **How to read this:** each section is one table (like one sheet in a spreadsheet). Each bullet is a column. `→ table` means the column points to a row in another table, the way the Dream ID column in your Color Palette sheet points back to a dream.
 
@@ -12,6 +12,7 @@
 users
  └── dreams ─────────────┬── dream_emotions     (ordered feelings: mixed + shifts)
                          ├── dream_elements ──→ symbols   (things in the dream)
+                         │                  ──→ people    (the same person across dreams)
                          ├── dream_events       (things that happen)
                          ├── day_residue        (waking life before the dream)
                          ├── dream_links ──→ dreams       (this dream connects to that one)
@@ -39,7 +40,7 @@ One row per account.
 - `traditions`: which interpretation traditions are switched on
 - `created_at`
 
-❓ Sign-in method: email + password, or "magic link" by email, or Google? (Decide in Phase 3.)
+**Sign-in (built in Phase 3):** email + password, Google, and Apple. A separate `user_logins` table can hold one row per sign-in method, so one person can link several. Apple sign-in needs an Apple Developer account (paid yearly), so it may come slightly after the other two.
 
 ---
 
@@ -62,7 +63,8 @@ One row per dream. Only `text` and `dreamed_on` are required.
 | `intensity` | 3 | overall quiet → intense, 1 to 5 |
 | `vividness` | 0.75 | blur → sharp memory, 0 to 1 (sets orb size) |
 | `lucidity` | 2 | 0 not aware · 1 hazy · 2 aware · 3 in control |
-| `dream_type` | pleasant / nightmare / mixed / neutral | from your codebook |
+| `dream_type` | pleasant / nightmare / mixed / neutral | calculated from valence and intensity, but the user can change it |
+| `dream_type_set_by` | auto / user | so a recalculation never overwrites the user's own choice |
 | `narrative` | linear / fragmented / jumping | from your codebook |
 | `spoke` | yes / no | did you speak in the dream |
 | `was_heard` | yes / no | was your speech heard or answered |
@@ -77,7 +79,7 @@ One row per dream. Only `text` and `dreamed_on` are required.
 | `deleted_at` | | set when deleted; the row is removed for good 30 days later |
 | `created_at`, `updated_at` | | |
 
-❓ `dream_type`: keep it as something you pick, or calculate it from valence and intensity (e.g. valence ≤ −2 and intensity ≥ 4 → nightmare)?
+`dream_type` starting rule (to tune later): valence ≤ −2 and intensity ≥ 4 → nightmare; valence ≥ +1 → pleasant; dream has both a positive and a negative emotion → mixed; otherwise neutral.
 
 ---
 
@@ -89,7 +91,8 @@ The feelings in a dream, **in order**. One row per feeling.
 |---|---|---|
 | `dream_id` → dreams | 44 | |
 | `position` | 1, 2… | when in the dream; rows with the **same** position are felt together (mixed) |
-| `emotion` | calm | one of the 8 orb emotions |
+| `emotion` | calm | one of the 8 orb emotions (sets colors and charts) |
+| `label` | "nostalgic" | optional finer word in your own language; maps onto `emotion` |
 | `intensity` | 2 | 1 to 5 |
 | `note` | "until the water reached my feet" | optional: what caused the change |
 | `ai_suggested`, `kept` | yes, yes | decision 5 |
@@ -98,8 +101,6 @@ How the codebook fields map here:
 - **Primary / secondary emotion:** the strongest and second-strongest rows.
 - **Mixed:** two rows with the same `position`.
 - **情绪转折 (shift):** different positions. "Starts calm, ends in fear" is position 1 calm, position 2 fear.
-
-❓ The 8 orb emotions are broad. Do you also want a free-text `label` per row for finer words (e.g. "nostalgic", "guilty") that map onto one of the 8?
 
 ---
 
@@ -124,7 +125,7 @@ Common columns, for every kind:
 | kind | details | example |
 |---|---|---|
 | **symbol** | none | 水 |
-| **person** | `role` (family / friend / stranger / authority / self), `relation`, `description` | role family, relation grandmother |
+| **person** | `person_id` → people, plus `description` of how they appeared this time | → "grandmother", "sweeping the courtyard" |
 | **place** | `indoor` (yes/no), `public` (yes/no), `cultural_setting`, `feeling` | tower · indoor · private · "safe, like a lighthouse" |
 | **body** | `part`, `sensation`, `pain` 0–5, `integrity` (intact / wounded / separated) | hand · warm · 0 · intact |
 | **media** | `work`, `media_type` (film, game, novel…), `origin` | *Blade Runner 2049* · film |
@@ -133,7 +134,22 @@ Common columns, for every kind:
 - **空间转折 (spatial shift)** is simply more than one `place` row, in `position` order. No separate field needed.
 - **Recurring elements** are not stored; they're counted across dreams (水 in 8 dreams = recurring).
 
-❓ Should **people** in different dreams link to the same "person" (so "my sister" across 12 dreams is one person you can follow), or stay as text per dream for v1? Linking is better for the People lens but adds a small `people` table.
+---
+
+## people
+
+The recurring cast of your dreams. "My sister" across 12 dreams is **one** row here, so the People lens can follow her.
+
+| column | example | why |
+|---|---|---|
+| `id` | | |
+| `user_id` → users | | each user has their own people |
+| `name` | "grandmother" | what you call them |
+| `role` | family / friend / stranger / authority / self | for counts like "family appeared in 40% of dreams" |
+| `relation` | grandmother | finer than role |
+| `note` | | optional |
+
+Strangers usually stay as one-off people. When the AI tags a person, it suggests an existing match ("grandmother → the same grandmother as before?") and you confirm.
 
 ---
 
@@ -235,7 +251,7 @@ Sketched only; built after the solo app works.
 |---|---|---|
 | 基础信息 | date, text, sleep / wake time, recorded soon, title | |
 | 情绪 | valence, emotions (ordered), intensity, shift | |
-| 人物 | people with role and relation | linked "same person" across dreams |
+| 人物 | people (one row per person, linked across dreams) with role and relation | |
 | 地点 | places with indoor, public, setting, feeling | |
 | 身体 | body part, sensation, pain, integrity | |
 | 语言/表达 | spoke, was heard | speech quality, language used |
@@ -247,4 +263,4 @@ Sketched only; built after the solo app works.
 | 梦境类型 | dream type, lucidity, narrative, links to earlier dreams | |
 | 梦后 | mood on waking, creative impulse, insight, reality link | social behavior after waking |
 
-❓ Anything here you'd move between v1 and later, or drop?
+Decided: keep this split as is for now.
