@@ -170,7 +170,7 @@
         "matches": ["zg-073 猫 (cat catching a mouse)"],
         "no_match": ["phone call", "exam hall"],
         "must_not_match": ["zg-021 房屋 (via 'lighthouse')"],
-        "dream_type": "neutral"
+        "dream_type": "pleasant"
       }
     }
   ]

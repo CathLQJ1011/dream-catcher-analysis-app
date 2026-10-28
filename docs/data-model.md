@@ -264,3 +264,16 @@ Sketched only; built after the solo app works.
 | 梦后 | mood on waking, creative impulse, insight, reality link | social behavior after waking |
 
 Decided: keep this split as is for now.
+
+---
+
+## Implementation notes
+
+Built in `backend/app/db/models.py` (first migration: `backend/migrations/versions/*_initial_schema.py`). Small differences from the sketch above:
+
+- **symbols** gained `code` (the CSV id, e.g. `zg-001`, `jg-004`, so the loader can update rows in place), separate `meaning_zh` / `meaning_en`, and an `extra` field for tradition-specific data (周公: classical lines, second source, edition notes; Jung: kind, reflection questions, what to avoid).
+- **symbols.embedding** has no fixed dimension yet; it's set once an embedding model is chosen.
+- **dreams.top_symbol** is `top_element_id`, pointing at the dream element used as the headline.
+- **users.memories** values are `all` / `gentle` / `off`, matching the Me screen.
+- **interpretations** links to the symbols it used through a small `interpretation_symbols` table, and has `resonated` for the "Does this resonate?" answer.
+- Fixed choices (emotions, roles, kinds) are text columns with database checks, so adding a value later is a one-line migration.
