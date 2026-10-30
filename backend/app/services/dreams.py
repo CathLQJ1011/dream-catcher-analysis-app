@@ -105,6 +105,7 @@ def to_summary(dream: Dream) -> DreamSummary:
         emotion=ranked[0].emotion if ranked else None,
         blend=next((e.emotion for e in ranked[1:] if e.emotion != ranked[0].emotion), None) if ranked else None,
         vividness=dream.vividness, valence=dream.valence, dream_type=dream.dream_type,
+        visibility=dream.visibility,
     )
 
 

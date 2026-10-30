@@ -179,7 +179,8 @@ Returns a light version for lists and calendars:
   "items": [
     { "id": 52, "number": 49, "dreamed_on": "2026-10-20", "title": "A train with no last stop",
       "top_symbol": { "value": "train", "term_zh": "车" }, "gloss": "火车",
-      "emotion": "longing", "blend": null, "vividness": 0.5, "valence": 0, "dream_type": "neutral" }
+      "emotion": "longing", "blend": null, "vividness": 0.5, "valence": 0, "dream_type": "neutral",
+      "visibility": "private" }
   ],
   "next_cursor": null,
   "counts_by_emotion": { "calm": 7, "longing": 4 }
@@ -328,14 +329,21 @@ Public **share links** for people without the app are **not planned for now** (d
 
 ---
 
+## Sharing (built)
+
+| method | path | body | returns |
+|---|---|---|---|
+| `POST` | `/dreams/{id}/share/preview` | | `{ text, removed }`: the anonymized text and which tagged people were replaced |
+| `POST` | `/dreams/{id}/share` | `{ text, include_readings, include_image }` | `201`; the shared copy. Sharing again updates it |
+| `DELETE` | `/dreams/{id}/share` | | `204`; unshared |
+| `DELETE` | `/me/shares` | | `204`; unshare everything |
+
+The v1 preview replaces the people tagged in the dream with "someone" (某人 for Chinese names); the AI version in Phase 5 also catches untagged names. Deleting a dream removes its shared copy at once, and restoring it does not share it again.
+
 ## Community (later)
 
 | method | path | body | returns |
 |---|---|---|---|
-| `POST` | `/dreams/{id}/share/preview` | | the anonymized text and what was removed |
-| `POST` | `/dreams/{id}/share` | `{ text, include_readings, include_image }` | `201`; the shared copy |
-| `DELETE` | `/dreams/{id}/share` | | `204`; unshared |
-| `DELETE` | `/me/shares` | | `204`; unshare everything |
 | `GET` | `/community/draw?emotion=calm` | | one shared dream you haven't opened yet |
 | `GET` | `/community/week` | | the "This week in Community" numbers |
 | `POST` / `DELETE` | `/community/{share_id}/like` | | the new like count |

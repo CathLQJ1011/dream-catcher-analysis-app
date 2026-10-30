@@ -9,7 +9,7 @@ import type { SampleDream } from '@/data/sampleDreams'
 // Fields a dream can leave blank get a quiet middle value so the orb still draws:
 // no feeling reads as neutral, no vividness as half.
 
-export type JournalDream = SampleDream & { id: number }
+export type JournalDream = SampleDream & { id: number; shared: boolean }
 
 const isHan = (s: string) => /\p{Script=Han}/u.test(s)
 
@@ -28,6 +28,7 @@ function base(d: DreamSummary | DreamOut) {
     title: d.title ?? '',
     valence: (d.valence ?? 0) as SampleDream['valence'],
     vividness: d.vividness ?? 0.5,
+    shared: d.visibility === 'shared',
   }
 }
 

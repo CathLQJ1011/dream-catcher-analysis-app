@@ -172,6 +172,7 @@ class Dream(Base):
     events: Mapped[list[DreamEvent]] = relationship(back_populates="dream", cascade="all, delete-orphan")
     day_residue: Mapped[list[DayResidue]] = relationship(back_populates="dream", cascade="all, delete-orphan")
     interpretations: Mapped[list[Interpretation]] = relationship(back_populates="dream", cascade="all, delete-orphan")
+    share: Mapped[SharedDream | None] = relationship(back_populates="dream", cascade="all, delete-orphan")
 
 
 class DreamEmotion(TagFlags, Base):
@@ -278,6 +279,35 @@ class DreamLink(TagFlags, Base):
     from_dream_id: Mapped[int] = mapped_column(ForeignKey("dreams.id", ondelete="CASCADE"), index=True)
     to_dream_id: Mapped[int] = mapped_column(ForeignKey("dreams.id", ondelete="CASCADE"), index=True)
     reason: Mapped[str | None] = mapped_column(Text)
+
+
+# ---------- Community ----------
+
+
+class SharedDream(Base):
+    """An anonymized snapshot of a dream in the Community blind box (docs/data-model.md, later tables).
+
+    Never holds the dreamer's name or the dream's date. Unsharing or deleting the dream
+    removes it right away (decision 6). Likes, comments and folders will point here.
+    """
+
+    __tablename__ = "shared_dreams"
+    __table_args__ = (
+        one_of("emotion", EMOTIONS, "shared_emotion_valid"),
+        one_of("blend", EMOTIONS, "shared_blend_valid"),
+    )
+
+    id: Mapped[int] = pk()
+    dream_id: Mapped[int] = mapped_column(ForeignKey("dreams.id", ondelete="CASCADE"), unique=True)
+    text: Mapped[str] = mapped_column(Text)  # the anonymized text the dreamer approved
+    emotion: Mapped[str | None] = mapped_column(String(10))
+    blend: Mapped[str | None] = mapped_column(String(10))
+    top_symbol: Mapped[str | None] = mapped_column(String(500))
+    include_readings: Mapped[bool] = mapped_column(Boolean, default=False)
+    include_image: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = created_at()
+
+    dream: Mapped[Dream] = relationship(back_populates="share")
 
 
 # ---------- Dictionaries and readings ----------

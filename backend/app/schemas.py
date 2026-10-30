@@ -270,6 +270,7 @@ class DreamSummary(BaseModel):
     vividness: float | None
     valence: int | None
     dream_type: DreamType | None
+    visibility: Literal["private", "shared"]
 
 
 class DreamList(BaseModel):
@@ -285,3 +286,31 @@ class DeletedDream(BaseModel):
     title: str | None
     deleted_at: datetime
     purge_on: date
+
+
+# ---------- Sharing (Community) ----------
+
+
+class SharePreview(BaseModel):
+    """What others would see, before anything is shared."""
+
+    text: str
+    removed: list[str]  # the names and relations that were replaced with "someone"
+
+
+class ShareCreate(Strict):
+    text: DreamText  # the previewed text, possibly edited further by the dreamer
+    include_readings: bool = False
+    include_image: bool = False
+
+
+class SharedOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    text: str
+    emotion: Emotion | None
+    blend: Emotion | None
+    top_symbol: str | None
+    include_readings: bool
+    include_image: bool
+    created_at: datetime

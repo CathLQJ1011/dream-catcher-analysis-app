@@ -3,6 +3,7 @@ import Capture from '@/pages/Capture'
 import Community from '@/pages/Community'
 import DreamDetail from '@/pages/DreamDetail'
 import Journal from '@/pages/Journal'
+import ManageDreams from '@/pages/ManageDreams'
 import Me from '@/pages/Me'
 import Patterns from '@/pages/Patterns'
 import SignIn from '@/pages/SignIn'
@@ -35,6 +36,8 @@ function App() {
       return <Community />
     case '/me':
       return <Me />
+    case '/me/dreams':
+      return <ManageDreams />
     default:
       return <Journal />
   }

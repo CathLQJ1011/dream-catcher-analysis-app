@@ -97,7 +97,10 @@ export type DreamSummary = {
   vividness: number | null
   valence: number | null
   dream_type: DreamOut['dream_type']
+  visibility: DreamOut['visibility']
 }
+
+export type DeletedDream = { id: number; number: number; dreamed_on: string; title: string | null; purge_on: string }
 
 export type DreamCreate = {
   dreamed_on: string
@@ -129,5 +132,14 @@ export const api = {
     ),
   getDream: (id: number) => request<DreamOut>('GET', `/dreams/${id}`),
   createDream: (dream: DreamCreate) => request<DreamOut>('POST', '/dreams', dream),
-  updateDream: (id: number, changes: { title?: string }) => request<DreamOut>('PATCH', `/dreams/${id}`, changes),
+  updateDream: (id: number, changes: { title?: string; text?: string }) =>
+    request<DreamOut>('PATCH', `/dreams/${id}`, changes),
+  deleteDream: (id: number) => request<void>('DELETE', `/dreams/${id}`),
+  restoreDream: (id: number) => request<DreamOut>('POST', `/dreams/${id}/restore`),
+  recentlyDeleted: () => request<DeletedDream[]>('GET', '/dreams/deleted'),
+
+  previewShare: (id: number) => request<{ text: string; removed: string[] }>('POST', `/dreams/${id}/share/preview`),
+  share: (id: number, text: string) => request<unknown>('POST', `/dreams/${id}/share`, { text }),
+  unshare: (id: number) => request<void>('DELETE', `/dreams/${id}/share`),
+  unshareEverything: () => request<void>('DELETE', '/me/shares'),
 }

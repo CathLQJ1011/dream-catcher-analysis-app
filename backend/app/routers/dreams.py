@@ -181,6 +181,7 @@ def delete_dream(dream_id: int, user: CurrentUser, db: Db):
     dream.deleted_at = datetime.now(UTC)
     # Decision 6: a shared copy disappears right away, not after 30 days.
     dream.visibility = "private"
+    dream.share = None
     db.commit()
 
 

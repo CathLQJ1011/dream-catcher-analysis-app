@@ -32,6 +32,7 @@ Then open http://localhost:8000/docs for interactive docs where you can try ever
 
 - `tests/test_matching.py`: the test-dream check (expected symbols, false positives, dream types) and dictionary integrity. No database needed.
 - `tests/test_api.py`: every auth, Me and dream endpoint, including that one user can never see another's dreams. Needs the database.
+- `tests/test_sharing.py`: share preview (who gets replaced with "someone"), share, unshare, unshare everything, and that deleting a dream unshares it.
 - `tests/test_seed_db.py`: loads everything into Postgres inside a transaction and rolls it back. Skipped if the database isn't running.
 
 ## Changing the tables
@@ -50,7 +51,7 @@ Edit `app/db/models.py`, then:
 |---|---|
 | `app/db/models.py` | the tables |
 | `app/db/session.py` | database connection (`DATABASE_URL`, defaulting to the docker-compose database) |
-| `app/routers/` | the endpoints: `auth`, `me`, `dreams` |
+| `app/routers/` | the endpoints: `auth`, `me`, `dreams`, `shares` |
 | `app/schemas.py` | request and response shapes, with their validation rules |
 | `app/services/dreams.py` | dream logic shared by create and update |
 | `app/security.py` | password hashing and login sessions |

@@ -4,11 +4,11 @@ import { IconButton } from '@/components/app/AppShell'
 import { ShareSheet } from '@/components/app/ShareSheet'
 import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/ui/glass-card'
-import { Sheet } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
+import { CommunityShareSheet } from '@/components/dream/CommunityShareSheet'
 import { DreamArt } from '@/components/dream/DreamArt'
 import { DreamOrb } from '@/components/dream/DreamOrb'
-import { generatedImages, sharedDreams } from '@/data/prototypeState'
+import { generatedImages } from '@/data/prototypeState'
 import { sampleReadings } from '@/data/readings'
 import { fromDream, type JournalDream } from '@/data/journal'
 import type { SampleDream } from '@/data/sampleDreams'
@@ -84,7 +84,7 @@ export default function DreamDetail({ id }: { id: number }) {
       <DreamImage dream={dream} />
       <Readings dream={dream} />
       <Anatomy dream={dream} />
-      <ShareToCommunity dream={dream} />
+      <ShareToCommunity dream={dream} onChange={(shared) => setDream({ ...dream, shared })} />
 
       <ShareSheet
         open={shareOpen}
@@ -317,75 +317,36 @@ function Anatomy({ dream }: { dream: SampleDream }) {
 
 /* ---------- Share to Community ---------- */
 
-function ShareToCommunity({ dream }: { dream: SampleDream }) {
-  const [shared, setShared] = useState(sharedDreams.has(dream.number))
+function ShareToCommunity({ dream, onChange }: { dream: JournalDream; onChange: (shared: boolean) => void }) {
   const [previewOpen, setPreviewOpen] = useState(false)
-  const anonymized = anonymize(dream)
+  const [error, setError] = useState('')
 
   return (
     <Section title="Community">
       <div className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <span className="text-body">{shared ? 'Shared anonymously' : 'Private'}</span>
+          <span className="text-body">{dream.shared ? 'Shared anonymously' : 'Private'}</span>
           <span className="text-label font-normal text-fg-muted">
-            {shared ? 'Others can draw it from the blind box.' : 'Only you can see this dream.'}
+            {dream.shared ? 'Others can draw it from the blind box.' : 'Only you can see this dream.'}
           </span>
         </div>
         <Switch
           label="Share to Community"
-          checked={shared}
+          checked={dream.shared}
           onChange={(on) => {
             if (on) return setPreviewOpen(true) // always preview before sharing
-            sharedDreams.delete(dream.number)
-            setShared(false)
+            setError('')
+            api
+              .unshare(dream.id)
+              .then(() => onChange(false))
+              .catch((e: Error) => setError(e.message))
           }}
         />
       </div>
-
-      <Sheet open={previewOpen} onClose={() => setPreviewOpen(false)} title="This is what others will see">
-        <div className="flex flex-col gap-4 rounded-card border border-hairline bg-bg p-6">
-          <div className="flex items-center gap-4">
-            <DreamOrb emotion={dream.emotion} blend={dream.blend} size={40} seed={dream.number} />
-            <span className="font-serif text-title">{dream.symbol}</span>
-          </div>
-          <p className="font-serif text-dream">{anonymized.text}</p>
-        </div>
-        <ul className="flex flex-col gap-2 text-label font-normal text-fg-secondary">
-          <li>✦ No name, date or location is shared.</li>
-          {anonymized.removed > 0 && <li>✦ {anonymized.removed} mention{anonymized.removed > 1 ? 's' : ''} of people replaced with “someone”.</li>}
-          <li>✦ You can unshare at any time.</li>
-        </ul>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="ghost" onClick={() => setPreviewOpen(false)}>
-            Keep private
-          </Button>
-          <Button
-            onClick={() => {
-              sharedDreams.add(dream.number)
-              setShared(true)
-              setPreviewOpen(false)
-            }}
-          >
-            Share
-          </Button>
-        </div>
-      </Sheet>
+      {error && <span className="text-label font-normal text-ember">{error}</span>}
+      <CommunityShareSheet key={String(previewOpen)} dream={dream} open={previewOpen} onClose={() => setPreviewOpen(false)} onShared={() => onChange(true)} />
     </Section>
   )
-}
-
-// Prototype anonymizer: swaps known people for "someone". The real one is an AI step the user approves.
-function anonymize(dream: SampleDream) {
-  let removed = 0
-  let text = dream.text
-  for (const p of dream.people) {
-    const re = new RegExp(`\\b(my |My )?${p}('s)?\\b`, 'g')
-    text = text.replace(re, (_m, my: string | undefined, poss: string | undefined) => {
-      removed++
-      return `${my?.startsWith('M') ? 'S' : 's'}omeone${poss ?? ''}`
-    })
-  }
-  return { text, removed }
 }
 
 /* ---------- Share card ---------- */

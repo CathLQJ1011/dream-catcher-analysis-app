@@ -1,17 +1,17 @@
 import { useState, type ReactNode } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { AppShell } from '@/components/app/AppShell'
 import { Segmented } from '@/components/app/Segmented'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
 import { DreamOrb } from '@/components/dream/DreamOrb'
-import { DreamRow } from '@/components/dream/DreamRow'
 import { EmotionChip } from '@/components/dream/EmotionChip'
-import { profile, sharedDreams, type ProfileOrb } from '@/data/prototypeState'
+import { profile, type ProfileOrb } from '@/data/prototypeState'
 import { PROTOTYPE_TODAY, SAMPLE_DREAMS, findDream } from '@/data/sampleDreams'
 import { EMOTIONS, type Emotion } from '@/lib/emotions'
 import { daysBetween, parseDate } from '@/lib/dates'
+import { navigate } from '@/lib/router'
 import { signOut, useSession } from '@/lib/session'
 import { cn } from '@/lib/utils'
 
@@ -32,7 +32,6 @@ export default function Me() {
   const [status, setStatus] = useState('')
   const [orb, setOrb] = useState<ProfileOrb>(profile.orb)
   const [editOpen, setEditOpen] = useState(false)
-  const [sharedOpen, setSharedOpen] = useState(false)
   const shown = resolveOrb(orb, first, second)
   const session = useSession()
 
@@ -67,52 +66,18 @@ export default function Me() {
         )}
       </header>
 
-      <Group title="Sharing">
-        <div className="border-b border-hairline">
-          <button
-            type="button"
-            aria-expanded={sharedOpen}
-            onClick={() => setSharedOpen((o) => !o)}
-            className="flex min-h-14 w-full items-center justify-between gap-4 py-3 text-left"
-          >
-            <div className="flex flex-col gap-1">
-              <span className="text-body">Shared dreams</span>
-              <span className="text-label font-normal text-fg-muted">Anonymous, in the Community blind box</span>
-            </div>
-            <span className="flex items-center gap-2 font-mono text-meta uppercase text-fg-muted">
-              {sharedDreams.size}
-              <ChevronDown className={cn('size-4 transition', sharedOpen && 'rotate-180')} strokeWidth={1.5} />
-            </span>
-          </button>
-          {sharedOpen && (
-            // Same row format as the lists on Patterns
-            <ul className="animate-enter pb-2">
-              {sharedDreams.size === 0 && (
-                <li className="py-4 font-serif text-body italic text-fg-secondary">Nothing shared yet.</li>
-              )}
-              {[...sharedDreams]
-                .map((n) => findDream(n))
-                .filter((d) => d !== undefined)
-                .sort((a, b) => b.date.localeCompare(a.date))
-                .map((d) => (
-                  <DreamRow key={d.number} dream={d} />
-                ))}
-            </ul>
-          )}
-        </div>
-        <Row label="Unshare everything" hint="Removes all your dreams from Community">
-          <button
-            type="button"
-            disabled={sharedDreams.size === 0}
-            onClick={() => {
-              sharedDreams.clear()
-              setStatus('All dreams are private again.')
-            }}
-            className="text-label text-ember disabled:text-fg-muted"
-          >
-            Unshare
-          </button>
-        </Row>
+      <Group title="Your dreams">
+        <button
+          type="button"
+          onClick={() => navigate('/me/dreams')}
+          className="flex min-h-14 w-full items-center justify-between gap-4 border-b border-hairline py-3 text-left"
+        >
+          <div className="flex flex-col gap-1">
+            <span className="text-body">Manage dreams</span>
+            <span className="text-label font-normal text-fg-muted">View, edit, share or delete, as a list or a calendar</span>
+          </div>
+          <ChevronRight className="size-4 text-fg-muted" strokeWidth={1.5} />
+        </button>
       </Group>
 
       <ProfileSheet
