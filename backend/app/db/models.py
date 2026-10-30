@@ -70,6 +70,7 @@ class User(Base):
     __table_args__ = (
         one_of("capture_with", ("voice", "text"), "capture_with_valid"),
         one_of("memories", ("all", "gentle", "off"), "memories_valid"),
+        one_of("check_in", ("minimal", "full"), "check_in_valid"),
     )
 
     id: Mapped[int] = pk()
@@ -80,6 +81,9 @@ class User(Base):
     capture_with: Mapped[str] = mapped_column(String(8), default="voice")
     memories: Mapped[str] = mapped_column(String(8), default="gentle")
     traditions: Mapped[list[str]] = mapped_column(ARRAY(String(16)), default=lambda: ["zhougong", "jung"])
+    # Decision 14: how much the Capture check-in asks, and the morning reminder.
+    check_in: Mapped[str] = mapped_column(String(8), default="minimal", server_default="minimal")
+    reminder_at: Mapped[time | None] = mapped_column(Time)  # null means off
     created_at: Mapped[datetime] = created_at()
 
     dreams: Mapped[list[Dream]] = relationship(back_populates="user", cascade="all, delete-orphan")

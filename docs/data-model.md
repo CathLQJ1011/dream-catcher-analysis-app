@@ -38,6 +38,8 @@ One row per account.
 - `capture_with`: voice or text
 - `memories`: all / gentle / off ("this time last year")
 - `traditions`: which interpretation traditions are switched on
+- `check_in`: minimal / full (how much the Capture check-in asks)
+- `reminder_at`: time of the morning reminder; empty means off
 - `created_at`
 
 **Sign-in (built in Phase 3):** email + password, Google, and Apple. A separate `user_logins` table can hold one row per sign-in method, so one person can link several. Apple sign-in needs an Apple Developer account (paid yearly), so it may come slightly after the other two.

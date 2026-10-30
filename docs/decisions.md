@@ -53,3 +53,26 @@
 ### 12. Keep the v1 / later split from the data model draft
 **Decision:** The codebook fields stay split as listed in `data-model.md`.
 **Why:** It covers every screen in the prototype and the first Patterns lenses; the rest can be added without restructuring.
+
+## Phase 3: API contract (2026-10-29)
+
+### 13. Login sessions use cookies
+**Decision:** After login, the browser holds a secure, http-only session cookie. Bearer tokens can be added if a native iPhone app is built.
+**Why:** For a web app, a cookie the page's own scripts can't read is the simplest setup and the hardest to steal.
+
+### 14. Check-in depth and the morning reminder are account settings
+**Decision:** `users` gains `check_in` (minimal / full) and `reminder_at` (a time, or empty for off).
+**Why:** Both appear on the Me screen and should follow the person across devices, not live only in one browser.
+
+### 15. Voice recordings are not kept
+**Decision:** Audio is deleted as soon as its transcript exists and is never stored in the database.
+**Why:** A recording of someone describing their dream is more personal than the text, and the app doesn't need it once transcribed.
+
+### 16. No public share links for now
+**Decision:** Share cards are images the dreamer shares themselves. There are no public URLs that show a dream to people outside the app.
+**Why:** A public link can travel anywhere and is hard to take back. It can be designed later with proper privacy controls.
+
+### 17. Limits on AI use, and no dream text in logs
+**Decision:** About 30 AI calls (transcription, suggestions, readings) per user per hour. Server logs record requests without the dream text.
+**Why:** Keeps API costs predictable and protects against abuse, and keeps dreams out of places like log files that are easy to overlook.
+
