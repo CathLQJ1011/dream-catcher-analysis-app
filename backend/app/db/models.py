@@ -75,6 +75,8 @@ class User(Base):
 
     id: Mapped[int] = pk()
     email: Mapped[str] = mapped_column(String(320), unique=True)
+    # Argon2 hash; empty for accounts that only sign in with Google or Apple.
+    password_hash: Mapped[str | None] = mapped_column(String(255))
     display_name: Mapped[str] = mapped_column(String(64), default="Anonymous dreamer")
     # {"mode": "auto"} | {"mode": "mix", "emotion": …, "blend": …} | {"mode": "dream", "dream_id": …}
     profile_orb: Mapped[dict] = mapped_column(JSONB, default=lambda: {"mode": "auto"})
@@ -88,6 +90,21 @@ class User(Base):
 
     dreams: Mapped[list[Dream]] = relationship(back_populates="user", cascade="all, delete-orphan")
     people: Mapped[list[Person]] = relationship(back_populates="user", cascade="all, delete-orphan")
+
+
+class AuthSession(Base):
+    """A logged-in browser (decision 13). Only a hash of the cookie's token is stored,
+    so a leaked database can't be used to log in; deleting the row logs that browser out."""
+
+    __tablename__ = "sessions"
+
+    id: Mapped[int] = pk()
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = created_at()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    user: Mapped[User] = relationship()
 
 
 # ---------- Dreams ----------
