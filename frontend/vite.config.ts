@@ -10,4 +10,12 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    // The backend runs separately (backend/README.md). Passing /api through the dev
+    // server keeps everything on one origin, so the login cookie just works, even
+    // when the app is opened from a phone on the same Wi-Fi.
+    proxy: {
+      '/api': 'http://127.0.0.1:8000',
+    },
+  },
 })

@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react'
-import { ChevronLeft, Share, Sparkle } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { ChevronLeft, Pencil, Share, Sparkle } from 'lucide-react'
 import { IconButton } from '@/components/app/AppShell'
 import { ShareSheet } from '@/components/app/ShareSheet'
 import { Button } from '@/components/ui/button'
@@ -8,10 +8,11 @@ import { Sheet } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
 import { DreamArt } from '@/components/dream/DreamArt'
 import { DreamOrb } from '@/components/dream/DreamOrb'
-import { DreamRow } from '@/components/dream/DreamRow'
 import { generatedImages, sharedDreams } from '@/data/prototypeState'
 import { sampleReadings } from '@/data/readings'
-import { SAMPLE_DREAMS, findDream, type SampleDream } from '@/data/sampleDreams'
+import { fromDream, type JournalDream } from '@/data/journal'
+import type { SampleDream } from '@/data/sampleDreams'
+import { api, ApiError } from '@/lib/api'
 import { EMOTIONS } from '@/lib/emotions'
 import { parseDate } from '@/lib/dates'
 import { navigate } from '@/lib/router'
@@ -19,11 +20,32 @@ import { navigate } from '@/lib/router'
 // Dream Detail (docs/screens.md §2). The dream text is the hero; everything else
 // is quieter and below it. Your own reading comes before the AI's.
 
-export default function DreamDetail({ number }: { number: number }) {
-  const dream = findDream(number)
+export default function DreamDetail({ id }: { id: number }) {
+  const [dream, setDream] = useState<JournalDream | null | 'loading'>('loading')
+  const [problem, setProblem] = useState('')
   const [shareOpen, setShareOpen] = useState(false)
 
+  useEffect(() => {
+    api
+      .getDream(id)
+      .then((d) => setDream(fromDream(d)))
+      .catch((e: Error) => {
+        // Someone else's dream and a missing one look the same: not here.
+        if (!(e instanceof ApiError && e.status === 404)) setProblem(e.message)
+        setDream(null)
+      })
+  }, [id])
+
+  if (dream === 'loading') return <Frame onShare={() => {}} />
+
   if (!dream) {
+    if (problem) {
+      return (
+        <Frame onShare={() => {}}>
+          <p className="mt-24 font-serif text-dream italic text-fg-secondary">{problem}</p>
+        </Frame>
+      )
+    }
     return (
       <Frame onShare={() => {}}>
         <p className="mt-24 font-serif text-title">
@@ -50,6 +72,7 @@ export default function DreamDetail({ number }: { number: number }) {
             {dream.symbol}
           </h1>
           {dream.gloss && <span className="font-serif text-dream italic text-fg-secondary">{dream.gloss}</span>}
+          <EditableTitle dream={dream} onSaved={(title) => setDream({ ...dream, title })} />
           <Tags dream={dream} />
         </div>
         <DreamOrb emotion={dream.emotion} blend={dream.blend} size={64 + dream.vividness * 40} seed={dream.number} className="mt-6" />
@@ -61,7 +84,6 @@ export default function DreamDetail({ number }: { number: number }) {
       <DreamImage dream={dream} />
       <Readings dream={dream} />
       <Anatomy dream={dream} />
-      <Connected dream={dream} />
       <ShareToCommunity dream={dream} />
 
       <ShareSheet
@@ -75,7 +97,7 @@ export default function DreamDetail({ number }: { number: number }) {
   )
 }
 
-function Frame({ onShare, children }: { onShare: () => void; children: ReactNode }) {
+function Frame({ onShare, children }: { onShare: () => void; children?: ReactNode }) {
   return (
     <div className="relative min-h-screen overflow-x-clip">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-screen bg-night" />
@@ -99,12 +121,66 @@ function Frame({ onShare, children }: { onShare: () => void; children: ReactNode
   )
 }
 
+// The dream's title: tap to rename. Saves on Enter or when you tap away; Escape cancels.
+function EditableTitle({ dream, onSaved }: { dream: JournalDream; onSaved: (title: string) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(dream.title)
+  const [error, setError] = useState('')
+
+  async function save() {
+    const title = draft.trim()
+    setEditing(false)
+    if (!title || title === dream.title) return setDraft(dream.title)
+    try {
+      await api.updateDream(dream.id, { title })
+      onSaved(title)
+      setError('')
+    } catch (e) {
+      setDraft(dream.title)
+      setError(e instanceof ApiError ? e.message : 'Couldn’t rename. Try again.')
+    }
+  }
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        maxLength={200}
+        aria-label="Title"
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur()
+          if (e.key === 'Escape') {
+            setDraft(dream.title)
+            setEditing(false)
+          }
+        }}
+        className="h-9 w-full rounded-pill bg-raised px-4 text-label font-normal text-fg outline-none"
+      />
+    )
+  }
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="group flex items-center gap-2 self-start text-left text-label font-normal text-fg-muted hover:text-fg-secondary"
+      >
+        {dream.title || 'Add a title'}
+        <Pencil className="size-3 shrink-0 opacity-60 group-hover:opacity-100" strokeWidth={1.5} aria-label="Rename" />
+      </button>
+      {error && <span className="text-label font-normal text-ember">{error}</span>}
+    </>
+  )
+}
+
 function Tags({ dream }: { dream: SampleDream }) {
   const tags = [
     dream.lucidity >= 2 && 'Lucid',
     dream.intensity >= 5 && 'Intense',
     dream.valence <= -2 && 'Nightmare',
-    SAMPLE_DREAMS.filter((d) => d.symbols.includes(dream.symbol)).length > 2 && 'Recurring',
   ].filter(Boolean)
   if (tags.length === 0) return null
   return (
@@ -235,24 +311,6 @@ function Anatomy({ dream }: { dream: SampleDream }) {
           </dd>
         </div>
       </dl>
-    </Section>
-  )
-}
-
-/* ---------- Connected dreams ---------- */
-
-function Connected({ dream }: { dream: SampleDream }) {
-  const related = SAMPLE_DREAMS.filter(
-    (d) => d.number !== dream.number && d.symbols.some((s) => dream.symbols.includes(s)),
-  ).slice(0, 3)
-  if (related.length === 0) return null
-  return (
-    <Section title="Connected dreams">
-      <ul>
-        {related.map((d) => (
-          <DreamRow key={d.number} dream={d} />
-        ))}
-      </ul>
     </Section>
   )
 }

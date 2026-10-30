@@ -1,4 +1,4 @@
-import { SAMPLE_DREAMS, type SampleDream } from '@/data/sampleDreams'
+import type { SampleDream } from '@/data/sampleDreams'
 import { daysBetween, parseDate, toIso } from '@/lib/dates'
 
 // "One year ago tonight": the dream from this night last year, or the closest one
@@ -8,10 +8,14 @@ export type MemoryPref = 'on' | 'calm' | 'off'
 
 const WINDOW_DAYS = 3
 
-export function memoryFor(today: string, pref: MemoryPref): { dream: SampleDream; exact: boolean } | null {
+export function memoryFor<D extends SampleDream>(
+  today: string,
+  pref: MemoryPref,
+  dreams: D[],
+): { dream: D; exact: boolean } | null {
   if (pref === 'off') return null
   const target = sameDayLastYear(today)
-  const near = SAMPLE_DREAMS.map((d) => ({ d, gap: Math.abs(daysBetween(d.date, target)) }))
+  const near = dreams.map((d) => ({ d, gap: Math.abs(daysBetween(d.date, target)) }))
     .filter(({ d, gap }) => gap <= WINDOW_DAYS && (pref === 'on' || !isHeavy(d)))
     .sort((a, b) => a.gap - b.gap || b.d.vividness - a.d.vividness)
   return near[0] ? { dream: near[0].d, exact: near[0].gap === 0 } : null

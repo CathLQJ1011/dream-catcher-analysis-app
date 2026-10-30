@@ -12,6 +12,7 @@ import { profile, sharedDreams, type ProfileOrb } from '@/data/prototypeState'
 import { PROTOTYPE_TODAY, SAMPLE_DREAMS, findDream } from '@/data/sampleDreams'
 import { EMOTIONS, type Emotion } from '@/lib/emotions'
 import { daysBetween, parseDate } from '@/lib/dates'
+import { signOut, useSession } from '@/lib/session'
 import { cn } from '@/lib/utils'
 
 // Me (docs/screens.md §6): who you are here, and where trust lives.
@@ -33,6 +34,7 @@ export default function Me() {
   const [editOpen, setEditOpen] = useState(false)
   const [sharedOpen, setSharedOpen] = useState(false)
   const shown = resolveOrb(orb, first, second)
+  const session = useSession()
 
   return (
     <AppShell>
@@ -199,6 +201,14 @@ export default function Me() {
         <Row label="Delete all dreams" hint="Permanent. Asks twice.">
           <button type="button" onClick={() => setStatus('Deleting is disabled in the prototype.')} className="text-label text-ember">
             Delete
+          </button>
+        </Row>
+      </Group>
+
+      <Group title="Account">
+        <Row label="Signed in" hint={typeof session === 'object' && session ? session.email : undefined}>
+          <button type="button" onClick={() => signOut()} className="text-label text-accent-soft">
+            Sign out
           </button>
         </Row>
       </Group>

@@ -5,9 +5,9 @@ import { Segmented } from '@/components/app/Segmented'
 import { DreamOrb } from '@/components/dream/DreamOrb'
 import { EmotionChip } from '@/components/dream/EmotionChip'
 import { EmotionMapInput, type MapValue } from '@/components/dream/EmotionMapInput'
-import { PROTOTYPE_TODAY, addDream, type DreamColor } from '@/data/sampleDreams'
 import { profile } from '@/data/prototypeState'
-import { parseDate } from '@/lib/dates'
+import { ApiError, api, type ElementKind } from '@/lib/api'
+import { parseDate, today } from '@/lib/dates'
 import { EMOTIONS, type Emotion } from '@/lib/emotions'
 import { navigate } from '@/lib/router'
 import { cn } from '@/lib/utils'
@@ -26,7 +26,7 @@ type Step = 'tell' | 'reading' | 'tag'
 export default function Capture() {
   const [step, setStep] = useState<Step>('tell')
   const [text, setText] = useState('')
-  const [date, setDate] = useState(PROTOTYPE_TODAY)
+  const [date, setDate] = useState(today)
 
   if (step === 'reading') return <ReadingStep onDone={() => setStep('tag')} />
   return step === 'tell' ? (
@@ -114,7 +114,7 @@ function TellStep({
             onClick={() => setRecording((r) => !r)}
             className="relative flex size-44 items-center justify-center"
           >
-            <DreamOrb emotion="lucid" size={heard && !recording ? 120 : 176} state={recording ? 'recording' : 'idle'} className="absolute transition-all" />
+            <DreamOrb emotion="lucid" size={heard && !recording ? 120 : 176} state={recording ? 'recording' : 'idle'} className="pointer-events-none absolute transition-all" />
             <span className="relative flex size-16 items-center justify-center rounded-pill border border-fg/20 bg-bg/30 text-fg backdrop-blur-glass">
               {recording ? <Square className="size-5" strokeWidth={1.5} /> : <Mic className="size-6" strokeWidth={1.5} />}
             </span>
@@ -180,35 +180,53 @@ function TagStep({ text, date, onBack }: { text: string; date: string; onBack: (
   const [lucidity, setLucidity] = useState<'0' | '1' | '2' | '3'>(guess.lucidity)
   const [symbols, setSymbols] = useState<Proposed[]>(() => proposeSymbols(text))
   // Which fields still show the AI's suggestion, untouched by the dreamer.
-  const [suggested, setSuggested] = useState({ feeling: true, map: true, vividness: true, lucidity: true })
+  const [title, setTitle] = useState(() => firstSentence(text))
+  const [suggested, setSuggested] = useState({ title: true, feeling: true, map: true, vividness: true, lucidity: true })
   const touch = (k: keyof typeof suggested) => setSuggested((s) => ({ ...s, [k]: false }))
   const [adding, setAdding] = useState('')
   const [moreOpen, setMoreOpen] = useState(false)
+  const [residue, setResidue] = useState('')
+  const [waking, setWaking] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const toggleEmotion = (e: Emotion) => {
     touch('feeling')
     setEmotions((cur) => (cur.includes(e) ? cur.filter((x) => x !== e) : [...cur, e].slice(-2)))
   }
 
-  function save() {
-    const kept = symbols.filter((s) => s.on)
-    const number = addDream({
-      title: firstSentence(text),
-      text,
-      symbol: kept.find((s) => s.kind !== 'person' && s.kind !== 'color')?.term ?? 'dream',
-      gloss: kept.find((s) => s.kind === 'place')?.term ?? '',
-      emotion: emotions[0] ?? 'neutral',
-      blend: emotions[1],
-      valence: Math.round(map.valence) as -2 | -1 | 0 | 1 | 2,
-      intensity: Math.round(map.intensity) as 1 | 2 | 3 | 4 | 5,
-      vividness,
-      lucidity: Number(lucidity) as 0 | 1 | 2 | 3,
-      symbols: kept.filter((s) => s.kind !== 'person' && s.kind !== 'color').map((s) => s.term),
-      people: kept.filter((s) => s.kind === 'person').map((s) => s.term),
-      colors: paletteFrom(kept.filter((s) => s.kind === 'color').map((s) => s.term)),
-    }, date)
-    // Land on Journal with the new dream highlighted; Back won't return to the capture form.
-    navigate(`/journal?saved=${number}`, { replace: true })
+  async function save() {
+    setSaving(true)
+    setError('')
+    try {
+      const dream = await api.createDream({
+        dreamed_on: date,
+        text,
+        title: title.trim() || firstSentence(text),
+        valence: Math.round(map.valence),
+        intensity: Math.round(map.intensity),
+        vividness,
+        lucidity: Number(lucidity),
+        emotions: emotions.map((emotion, i) => ({ position: i + 1, emotion, ai_suggested: suggested.feeling })),
+        // Dropped suggestions are sent too (kept: false), so we learn which ones missed.
+        elements: symbols
+          .filter((s) => s.on || s.kind !== 'yours')
+          .map((s, i) => ({
+            kind: ELEMENT_KIND[s.kind] ?? 'symbol',
+            value: s.term,
+            position: i + 1,
+            ai_suggested: s.kind !== 'yours',
+            kept: s.on,
+          })),
+        ...(residue.trim() && { day_residue: [{ note: residue.trim() }] }),
+        ...(waking.trim() && { mood_on_waking: waking.trim() }),
+      })
+      // Land on Journal with the new dream highlighted; Back won't return to the capture form.
+      navigate(`/journal?saved=${dream.id}&on=${dream.dreamed_on}`, { replace: true })
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Couldn’t save. Try again.')
+      setSaving(false)
+    }
   }
 
   return (
@@ -216,9 +234,16 @@ function TagStep({ text, date, onBack }: { text: string; date: string; onBack: (
       left={<IconLink label="Back to the dream" onClick={onBack} icon={<ChevronLeft className="size-5" strokeWidth={1.5} />} />}
       step="2 / 2"
       action={
-        <Button className="w-full" onClick={save}>
-          Save dream
-        </Button>
+        <>
+          {error && (
+            <p className="mb-2 text-center text-label font-normal text-ember" role="alert">
+              {error}
+            </p>
+          )}
+          <Button className="w-full" disabled={saving} onClick={save}>
+            {saving ? 'Saving…' : 'Save dream'}
+          </Button>
+        </>
       }
     >
       <h1 className="font-serif text-title">
@@ -230,6 +255,19 @@ function TagStep({ text, date, onBack }: { text: string; date: string; onBack: (
         <Sparkle className="mt-1 size-3 shrink-0 text-accent-soft" strokeWidth={1.5} />
         Filled in from your dream. You know how it felt better than we do, so adjust freely. Nothing is required.
       </p>
+
+      <Field term="Title" def="a name to find it by; change it to anything" suggested={suggested.title}>
+        <input
+          value={title}
+          maxLength={200}
+          onChange={(e) => {
+            touch('title')
+            setTitle(e.target.value)
+          }}
+          aria-label="Title"
+          className="h-11 rounded-pill bg-raised px-4 font-serif text-body text-fg outline-none"
+        />
+      </Field>
 
       <Field term="Feeling" def="the emotions that stayed with you, up to two" suggested={suggested.feeling}>
         <div className="-ml-4 flex flex-wrap gap-1">
@@ -342,8 +380,18 @@ function TagStep({ text, date, onBack }: { text: string; date: string; onBack: (
         </button>
         {moreOpen && (
           <div className="flex animate-enter flex-col gap-6 pb-4">
-            <SmallField label="Anything from the last few days that might be in it?" placeholder="A show, a class, a conversation…" />
-            <SmallField label="How did you feel waking up?" placeholder="Rested, shaken, wanting to draw it…" />
+            <SmallField
+              label="Anything from the last few days that might be in it?"
+              placeholder="A show, a class, a conversation…"
+              value={residue}
+              onChange={setResidue}
+            />
+            <SmallField
+              label="How did you feel waking up?"
+              placeholder="Rested, shaken, wanting to draw it…"
+              value={waking}
+              onChange={setWaking}
+            />
           </div>
         )}
       </section>
@@ -429,7 +477,7 @@ function Field({
 // Which night the dream belongs to. Defaults to last night; a native date picker opens on tap.
 function NightPicker({ date, setDate }: { date: string; setDate: (d: string) => void }) {
   const label =
-    date === PROTOTYPE_TODAY
+    date === today()
       ? 'Last night'
       : parseDate(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   return (
@@ -440,7 +488,7 @@ function NightPicker({ date, setDate }: { date: string; setDate: (d: string) => 
       <input
         type="date"
         value={date}
-        max={PROTOTYPE_TODAY}
+        max={today()}
         onChange={(e) => e.target.value && setDate(e.target.value)}
         aria-label="Which night was this dream?"
         className="absolute inset-0 cursor-pointer opacity-0"
@@ -449,12 +497,24 @@ function NightPicker({ date, setDate }: { date: string; setDate: (d: string) => 
   )
 }
 
-function SmallField({ label, placeholder }: { label: string; placeholder: string }) {
+function SmallField({
+  label,
+  placeholder,
+  value,
+  onChange,
+}: {
+  label: string
+  placeholder: string
+  value: string
+  onChange: (v: string) => void
+}) {
   return (
     <label className="flex flex-col gap-2">
       <span className="text-label font-normal text-fg-secondary">{label}</span>
       <input
         placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         className="h-11 rounded-pill bg-bg px-4 text-body text-fg outline-none placeholder:text-fg-muted"
       />
     </label>
@@ -527,28 +587,9 @@ function proposeSymbols(text: string): Proposed[] {
   return found
 }
 
-const COLOR_HEX: Record<string, string> = {
-  red: '#C8381E', blue: '#4D6FB8', gold: '#E6B84A', green: '#3E6B3A', violet: '#7A6BD8', white: '#EEEBF2', black: '#141218',
-}
-
-// Dream palette from color words; falls back to a night palette.
-function paletteFrom(words: string[]): DreamColor[] {
-  const known = words.filter((w) => COLOR_HEX[w])
-  if (known.length === 0) {
-    return [
-      { name: 'Night', hex: '#1A1230', pct: 60, warmth: 'cool' },
-      { name: 'Glow', hex: '#B49CFF', pct: 40, warmth: 'cool' },
-    ]
-  }
-  return [
-    ...known.map((w) => ({
-      name: w[0].toUpperCase() + w.slice(1),
-      hex: COLOR_HEX[w],
-      pct: Math.round(60 / known.length),
-      warmth: (['red', 'gold'].includes(w) ? 'warm' : 'cool') as DreamColor['warmth'],
-    })),
-    { name: 'Night', hex: '#1A1230', pct: 40, warmth: 'cool' },
-  ]
+// The tag step's kinds, as the API names them. Creatures are symbols there.
+const ELEMENT_KIND: Record<string, ElementKind> = {
+  symbol: 'symbol', place: 'place', creature: 'symbol', person: 'person', color: 'color', yours: 'symbol',
 }
 
 function firstSentence(text: string) {

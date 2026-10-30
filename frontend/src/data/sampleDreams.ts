@@ -57,9 +57,3 @@ export function findDream(number: number) {
   return SAMPLE_DREAMS.find((d) => d.number === number)
 }
 
-/** Prototype-only: keeps a newly captured dream in memory until the page reloads. */
-export function addDream(dream: Omit<SampleDream, 'number' | 'date'>, date = PROTOTYPE_TODAY) {
-  const number = Math.max(...SAMPLE_DREAMS.map((d) => d.number)) + 1
-  SAMPLE_DREAMS.push({ ...dream, number, date })
-  return number
-}

@@ -19,3 +19,8 @@ export function formatShortDate(iso: string) {
 export function daysBetween(a: string, b: string) {
   return Math.round((parseDate(b).getTime() - parseDate(a).getTime()) / 86_400_000)
 }
+
+/** Today on this device, as YYYY-MM-DD. */
+export function today() {
+  return toIso(new Date())
+}

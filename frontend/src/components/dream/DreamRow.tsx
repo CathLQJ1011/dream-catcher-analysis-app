@@ -5,14 +5,15 @@ import { navigate } from '@/lib/router'
 import { cn } from '@/lib/utils'
 
 // A dream as a plain list row (design-spec §7.1 rule 4: rows before cards).
-export function DreamRow({ dream, highlight = false }: { dream: SampleDream; highlight?: boolean }) {
+// Real dreams link by their database id; the prototype's sample dreams by number.
+export function DreamRow({ dream, highlight = false }: { dream: SampleDream & { id?: number }; highlight?: boolean }) {
   const isHan = /\p{Script=Han}/u.test(dream.symbol)
 
   return (
     <li className="border-b border-hairline last:border-b-0">
       <button
         type="button"
-        onClick={() => navigate(`/dream/${dream.number}`)}
+        onClick={() => navigate(`/dream/${dream.id ?? dream.number}`)}
         className={cn('flex w-full items-center gap-4 py-4 text-left transition hover:bg-glass', highlight && 'animate-enter bg-glass')}
       >
         <div className="flex size-11 shrink-0 items-center justify-center">
