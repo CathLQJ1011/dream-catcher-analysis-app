@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.db.models import Dream, DreamElement, DreamEmotion, Symbol
 from app.deps import CurrentUser, Db
 from app.errors import ApiError, not_found
-from app.schemas import DeletedDream, DreamCreate, DreamList, DreamOut, DreamPatch, DreamType, Emotion
+from app.schemas import DeletedDream, DreamCreate, DreamList, DreamOut, DreamPatch, DreamType, Emotion, RelatedDream
 from app.services.dreams import apply_fields, choose_top_element, next_number, to_out, to_summary
 
 router = APIRouter(prefix="/dreams", tags=["dreams"])
@@ -145,6 +145,29 @@ def create_dream(body: DreamCreate, user: CurrentUser, db: Db):
 @router.get("/{dream_id}", response_model=DreamOut)
 def get_dream(dream_id: int, user: CurrentUser, db: Db):
     return to_out(db, own_dream(db, user, dream_id))
+
+
+@router.get("/{dream_id}/related", response_model=list[RelatedDream])
+def related_dreams(dream_id: int, user: CurrentUser, db: Db):
+    """For "Connected dreams": your other dreams sharing a dictionary symbol or a person, most shared first."""
+    dream = own_dream(db, user, dream_id)
+    symbols = {el.symbol.code for el in dream.elements if el.kept and el.symbol}
+    people = {el.value.strip().lower() for el in dream.elements if el.kept and el.kind == "person"}
+    if not symbols and not people:
+        return []
+    others = db.scalars(
+        select(Dream)
+        .where(Dream.user_id == user.id, Dream.deleted_at.is_(None), Dream.id != dream.id)
+        .options(selectinload(Dream.emotions), selectinload(Dream.elements).selectinload(DreamElement.symbol))
+    ).all()
+    found = []
+    for other in others:
+        shared_symbols = sorted(symbols & {el.symbol.code for el in other.elements if el.kept and el.symbol})
+        shared_people = sorted(people & {el.value.strip().lower() for el in other.elements if el.kept and el.kind == "person"})
+        if shared_symbols or shared_people:
+            found.append(RelatedDream(dream=to_summary(other), symbols=shared_symbols, people=shared_people))
+    found.sort(key=lambda r: (-(len(r.symbols) + len(r.people)), -r.dream.dreamed_on.toordinal()))
+    return found
 
 
 @router.patch("/{dream_id}", response_model=DreamOut)

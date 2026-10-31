@@ -8,11 +8,12 @@ import { Switch } from '@/components/ui/switch'
 import { CommunityShareSheet } from '@/components/dream/CommunityShareSheet'
 import { DreamArt } from '@/components/dream/DreamArt'
 import { DreamOrb } from '@/components/dream/DreamOrb'
+import { DreamRow } from '@/components/dream/DreamRow'
 import { generatedImages } from '@/data/prototypeState'
 import { sampleReadings } from '@/data/readings'
-import { fromDream, type JournalDream } from '@/data/journal'
+import { fromDream, fromSummary, type JournalDream } from '@/data/journal'
 import type { SampleDream } from '@/data/sampleDreams'
-import { api, ApiError } from '@/lib/api'
+import { api, ApiError, type RelatedDream } from '@/lib/api'
 import { EMOTIONS } from '@/lib/emotions'
 import { parseDate } from '@/lib/dates'
 import { navigate } from '@/lib/router'
@@ -24,8 +25,13 @@ export default function DreamDetail({ id }: { id: number }) {
   const [dream, setDream] = useState<JournalDream | null | 'loading'>('loading')
   const [problem, setProblem] = useState('')
   const [shareOpen, setShareOpen] = useState(false)
+  const [related, setRelated] = useState<RelatedDream[]>([])
 
   useEffect(() => {
+    api
+      .related(id)
+      .then(setRelated)
+      .catch(() => {}) // connections are extra; the dream still shows without them
     api
       .getDream(id)
       .then((d) => setDream(fromDream(d)))
@@ -73,7 +79,7 @@ export default function DreamDetail({ id }: { id: number }) {
           </h1>
           {dream.gloss && <span className="font-serif text-dream italic text-fg-secondary">{dream.gloss}</span>}
           <EditableTitle dream={dream} onSaved={(title) => setDream({ ...dream, title })} />
-          <Tags dream={dream} />
+          <Tags dream={dream} related={related} />
         </div>
         <DreamOrb emotion={dream.emotion} blend={dream.blend} size={64 + dream.vividness * 40} seed={dream.number} className="mt-6" />
       </header>
@@ -84,6 +90,7 @@ export default function DreamDetail({ id }: { id: number }) {
       <DreamImage dream={dream} />
       <Readings dream={dream} />
       <Anatomy dream={dream} />
+      <Connected related={related} />
       <ShareToCommunity dream={dream} onChange={(shared) => setDream({ ...dream, shared })} />
 
       <ShareSheet
@@ -176,11 +183,14 @@ function EditableTitle({ dream, onSaved }: { dream: JournalDream; onSaved: (titl
   )
 }
 
-function Tags({ dream }: { dream: SampleDream }) {
+function Tags({ dream, related }: { dream: JournalDream; related: RelatedDream[] }) {
+  // Recurring: the headline symbol shows up in at least two other dreams.
+  const recurring = dream.topCode && related.filter((r) => r.symbols.includes(dream.topCode!)).length >= 2
   const tags = [
     dream.lucidity >= 2 && 'Lucid',
     dream.intensity >= 5 && 'Intense',
     dream.valence <= -2 && 'Nightmare',
+    recurring && 'Recurring',
   ].filter(Boolean)
   if (tags.length === 0) return null
   return (
@@ -311,6 +321,21 @@ function Anatomy({ dream }: { dream: SampleDream }) {
           </dd>
         </div>
       </dl>
+    </Section>
+  )
+}
+
+/* ---------- Connected dreams ---------- */
+
+function Connected({ related }: { related: RelatedDream[] }) {
+  if (related.length === 0) return null
+  return (
+    <Section title="Connected dreams">
+      <ul>
+        {related.slice(0, 3).map((r) => (
+          <DreamRow key={r.dream.id} dream={fromSummary(r.dream)} />
+        ))}
+      </ul>
     </Section>
   )
 }

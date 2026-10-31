@@ -238,7 +238,7 @@ Returns `{ dream, exact }` or `204` if nothing matches, using the user's `memori
 
 | method | path | body | returns |
 |---|---|---|---|
-| `GET` | `/dreams/{id}/related` | | dreams sharing symbols or people, for "Connected dreams" |
+| `GET` | `/dreams/{id}/related` | | `[{ dream, symbols, people }]`: your other dreams sharing a dictionary symbol (by code) or a person, most shared first. For "Connected dreams" and the Recurring tag |
 | `POST` | `/dreams/{id}/links` | `{ to_dream_id, reason? }` | `201` |
 | `DELETE` | `/dreams/{id}/links/{to_dream_id}` | | `204` |
 
@@ -298,6 +298,7 @@ Every lens returns the same frame (the six-slot template from design-spec §7.2)
   "lens": "emotion",
   "period": "30d",
   "dream_count": 18,
+  "based_on": 18,
   "locked": false,
   "hero": { … lens-specific chart data … },
   "stats": [
@@ -305,17 +306,20 @@ Every lens returns the same frame (the six-slot template from design-spec §7.2)
     { "value": "Calm", "label": "Most felt" },
     { "value": "3.2", "label": "Intensity" }
   ],
-  "reading": "Your dreams have stayed fairly steady across this period…",
-  "list": [ … dream summaries, or rows like colors … ]
+  "reading": "Your dreams have stayed fairly steady across this period. *Calm* is the feeling that comes back most.",
+  "list_title": "Most intense dreams",
+  "list": [ … pattern dreams, or color rows … ]
 }
 ```
 
+A **pattern dream** is a list summary (see `GET /dreams`) plus `intensity` and `lucidity`. `based_on` is how many dreams the reading draws on (People: only dreams with people; Colors: only dreams with colors). In `reading`, `*asterisks*` mark the words shown in italics.
+
 `hero` per lens:
-- **emotion:** `points` (date, valence, intensity, emotion, dream_id), the moving-average `trend`, and `map_points` for the Map view.
-- **symbols:** top symbols with counts.
-- **rhythms:** dream counts per weekday.
-- **colors:** per dream, its color stripe; plus warm/cool shares.
-- **people:** top people with counts, or `locked: true` with `{ have, need }` (e.g. 7 of 10).
+- **emotion:** `points` (pattern dreams that have a valence, oldest first; used by both the Timeline and the Map), `trend` (`{ date, valence }`, a 3-dream moving average), and `map_reading` (the reading to show while the Map view is open).
+- **symbols:** `top`: up to five `{ name, count }`. A symbol that matched the dictionary is named by its term, so "river" and "sea" both count as 水.
+- **rhythms:** `weekdays` (seven counts, Monday first) and `busiest` (its index).
+- **colors:** `stripes` (`{ dream, colors: [{ name, hex, pct, warmth }] }` for each dream with known color words) plus `warm` and `cool` percentages. The list is color rows `{ name, hex, dreams }`.
+- **people:** `top` (`{ name, count }`), or `locked: true` with `{ have, need }` (e.g. 7 of 10).
 
 `reading` starts as a calculated sentence; later it can come from the AI.
 

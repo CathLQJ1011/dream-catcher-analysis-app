@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 
 from app import errors
-from app.routers import auth, dreams, me, shares
+from app.routers import auth, dreams, me, patterns, shares
 
 app = FastAPI(title="Dream Catcher API")
 errors.install(app)
 
-for router in (auth.router, me.router, dreams.router, shares.router):
+for router in (auth.router, me.router, dreams.router, shares.router, patterns.router):
     app.include_router(router, prefix="/api/v1")
 
 

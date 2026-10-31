@@ -1,4 +1,4 @@
-import { api, type DreamOut, type DreamSummary } from '@/lib/api'
+import { api, type DreamOut, type DreamSummary, type PatternDream } from '@/lib/api'
 import type { Emotion } from '@/lib/emotions'
 import { paletteFrom } from '@/lib/palette'
 import type { SampleDream } from '@/data/sampleDreams'
@@ -9,7 +9,12 @@ import type { SampleDream } from '@/data/sampleDreams'
 // Fields a dream can leave blank get a quiet middle value so the orb still draws:
 // no feeling reads as neutral, no vividness as half.
 
-export type JournalDream = SampleDream & { id: number; shared: boolean }
+export type JournalDream = SampleDream & {
+  id: number
+  shared: boolean
+  /** The headline symbol's dictionary code, when it matched one (whole dreams only). */
+  topCode?: string
+}
 
 const isHan = (s: string) => /\p{Script=Han}/u.test(s)
 
@@ -49,6 +54,15 @@ export function fromSummary(d: DreamSummary): JournalDream {
   }
 }
 
+/** From a Patterns chart point, which also knows intensity and lucidity. */
+export function fromPattern(d: PatternDream): JournalDream {
+  return {
+    ...fromSummary(d),
+    intensity: (d.intensity ?? 3) as SampleDream['intensity'],
+    lucidity: (d.lucidity ?? 0) as SampleDream['lucidity'],
+  }
+}
+
 /** From a whole dream (Dream detail). */
 export function fromDream(d: DreamOut): JournalDream {
   const kept = d.elements.filter((e) => e.kept)
@@ -72,6 +86,7 @@ export function fromDream(d: DreamOut): JournalDream {
     symbols: of('symbol', 'place', 'body', 'media'),
     people: of('person'),
     colors: paletteFrom(of('color')),
+    topCode: top?.symbol?.code,
   }
 }
 

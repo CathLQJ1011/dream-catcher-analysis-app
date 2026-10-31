@@ -314,3 +314,48 @@ class SharedOut(BaseModel):
     include_readings: bool
     include_image: bool
     created_at: datetime
+
+
+# ---------- Patterns ----------
+
+Lens = Literal["emotion", "symbols", "rhythms", "colors", "people"]
+Period = Literal["7d", "30d", "year"]
+
+
+class PatternDream(DreamSummary):
+    """A dream as the Patterns charts need it: the list summary plus intensity and lucidity."""
+
+    intensity: int | None
+    lucidity: int | None
+
+
+class Stat(BaseModel):
+    value: str
+    label: str
+
+
+class ColorRow(BaseModel):
+    name: str
+    hex: str
+    dreams: int
+
+
+class PatternFrame(BaseModel):
+    """Every lens fills the same six-slot template (design-spec §7.2)."""
+
+    lens: Lens
+    period: Period
+    dream_count: int  # dreams in the period
+    based_on: int  # dreams the reading draws on (People counts only dreams with people)
+    locked: bool = False
+    hero: dict
+    stats: list[Stat]
+    reading: str  # *asterisks* mark the words shown in italics
+    list_title: str
+    list: list[PatternDream] | list[ColorRow]
+
+
+class RelatedDream(BaseModel):
+    dream: DreamSummary
+    symbols: list[str]  # dictionary codes the two dreams share
+    people: list[str]

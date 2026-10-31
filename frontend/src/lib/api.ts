@@ -100,6 +100,39 @@ export type DreamSummary = {
   visibility: DreamOut['visibility']
 }
 
+export type PatternDream = DreamSummary & { intensity: number | null; lucidity: number | null }
+export type Lens = 'emotion' | 'symbols' | 'rhythms' | 'colors' | 'people'
+export type Period = '7d' | '30d' | 'year'
+export type Named = { name: string; count: number }
+export type ColorRow = { name: string; hex: string; dreams: number }
+export type StripeColor = { name: string; hex: string; pct: number; warmth: 'warm' | 'cool' | 'neutral' }
+
+/** One Patterns lens (docs/api-contract.md, Patterns). `hero` depends on the lens. */
+export type PatternFrame = {
+  lens: Lens
+  period: Period
+  dream_count: number
+  based_on: number
+  locked: boolean
+  hero: {
+    points?: PatternDream[]
+    trend?: { date: string; valence: number }[]
+    map_reading?: string
+    top?: Named[]
+    weekdays?: number[]
+    busiest?: number
+    stripes?: { dream: PatternDream; colors: StripeColor[] }[]
+    have?: number
+    need?: number
+  }
+  stats: { value: string; label: string }[]
+  reading: string
+  list_title: string
+  list: PatternDream[] | ColorRow[]
+}
+
+export type RelatedDream = { dream: DreamSummary; symbols: string[]; people: string[] }
+
 export type DeletedDream = { id: number; number: number; dreamed_on: string; title: string | null; purge_on: string }
 
 export type DreamCreate = {
@@ -137,6 +170,9 @@ export const api = {
   deleteDream: (id: number) => request<void>('DELETE', `/dreams/${id}`),
   restoreDream: (id: number) => request<DreamOut>('POST', `/dreams/${id}/restore`),
   recentlyDeleted: () => request<DeletedDream[]>('GET', '/dreams/deleted'),
+
+  related: (id: number) => request<RelatedDream[]>('GET', `/dreams/${id}/related`),
+  pattern: (lens: Lens, period: Period) => request<PatternFrame>('GET', `/patterns/${lens}?period=${period}`),
 
   previewShare: (id: number) => request<{ text: string; removed: string[] }>('POST', `/dreams/${id}/share/preview`),
   share: (id: number, text: string) => request<unknown>('POST', `/dreams/${id}/share`, { text }),
