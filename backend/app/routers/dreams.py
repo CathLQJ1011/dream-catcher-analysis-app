@@ -180,6 +180,8 @@ def update_dream(dream_id: int, body: DreamPatch, user: CurrentUser, db: Db):
     if "text" in sent and body.text != dream.text:
         dream.original_text = dream.original_text or dream.text  # keep the very first version
         dream.text = body.text
+        for reading in dream.interpretations:
+            reading.out_of_date = True
     if "dream_type" in sent:
         # The dreamer's own choice; recalculations won't overwrite it (decision 9).
         dream.dream_type = body.dream_type

@@ -14,6 +14,8 @@ export type JournalDream = SampleDream & {
   shared: boolean
   /** The headline symbol's dictionary code, when it matched one (whole dreams only). */
   topCode?: string
+  /** Your own reading, written before the AI's (whole dreams only). */
+  insight?: string
 }
 
 const isHan = (s: string) => /\p{Script=Han}/u.test(s)
@@ -87,6 +89,7 @@ export function fromDream(d: DreamOut): JournalDream {
     people: of('person'),
     colors: paletteFrom(of('color')),
     topCode: top?.symbol?.code,
+    insight: d.insight ?? '',
   }
 }
 

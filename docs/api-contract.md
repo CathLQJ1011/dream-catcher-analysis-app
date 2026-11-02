@@ -277,6 +277,25 @@ A Jungian reading follows the output shape in `jungian-model.md`. A 周公 readi
 
 Readings take several seconds, hence `202` and polling. Changing the dream text marks old readings as out of date rather than deleting them.
 
+**Built so far (Jung only).** `traditions` defaults to `["jung"]`; asking for `zhougong` returns `422 tradition_not_ready` until it's built. Each reading comes back as:
+
+```json
+{
+  "id": 12, "tradition": "jung", "status": "ready", "out_of_date": false,
+  "reading": "You might notice that…",
+  "confidence_note": "Based only on the dream text…",
+  "symbols": [{ "code": "jg-002", "term_zh": "阴影", "term_en": "shadow" }],
+  "details": { "headline": { "image": "homework", "glossary_id": null }, "dream_shape": {}, "dream_ego": "…", "motifs": [], "compensation": "…", "series_note": null, "questions": [], "dreamwork": null, "reading": "…", "confidence_note": "…" },
+  "error": null, "resonated": null, "created_at": "…"
+}
+```
+
+- `details` is the full Jungian output shape from `jungian-model.md`, plus a `headline` image that every reading picks, even when no glossary entry matches. A motif or headline with `glossary_id: null` is an open reading of the dream itself; `symbols` lists only the glossary entries actually cited.
+- `status` is `pending` while Claude writes it (poll `GET`), then `ready` or `failed`; a failed one has a short `error` for the dreamer. Asking again while one is pending returns the same one.
+- `GET` returns the newest reading per tradition. Older ones stay in the database, with the `model` and `prompt_version` that wrote them.
+- The reading is written in the language of the dream, not chosen by `Accept-Language` yet.
+- Over the hourly limit (decision 17): `429 too_many_ai_requests`.
+
 ---
 
 ## Dream image (v1)

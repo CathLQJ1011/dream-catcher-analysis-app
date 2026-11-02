@@ -74,6 +74,7 @@ export type DreamOut = {
   lucidity: number | null
   dream_type: 'pleasant' | 'nightmare' | 'mixed' | 'neutral' | null
   visibility: 'private' | 'shared'
+  insight: string | null
   top_element_id: number | null
   emotions: { position: number; emotion: Emotion; intensity: number | null; kept: boolean }[]
   elements: {
@@ -133,6 +134,35 @@ export type PatternFrame = {
 
 export type RelatedDream = { dream: DreamSummary; symbols: string[]; people: string[] }
 
+export type JungDetails = {
+  headline: { image: string; glossary_id: string | null }
+  dream_shape: { setting: string; turning_point: string; resolution: string }
+  dream_ego: string
+  motifs: { image: string; glossary_id: string | null; possibility: string; level: 'subjective' | 'objective' | 'both' }[]
+  compensation: string
+  series_note: string | null
+  questions: string[]
+  dreamwork: string | null
+  reading: string
+  confidence_note: string
+}
+
+export type Reading = {
+  id: number
+  tradition: 'jung' | 'zhougong'
+  status: 'pending' | 'ready' | 'failed'
+  out_of_date: boolean
+  reading: string
+  confidence_note: string | null
+  /** Glossary entries the reading cites. */
+  symbols: SymbolRef[]
+  /** The full structured reading; empty until it's ready. */
+  details: Partial<JungDetails>
+  error: string | null
+  resonated: boolean | null
+  created_at: string
+}
+
 export type DeletedDream = { id: number; number: number; dreamed_on: string; title: string | null; purge_on: string }
 
 export type DreamCreate = {
@@ -165,7 +195,7 @@ export const api = {
     ),
   getDream: (id: number) => request<DreamOut>('GET', `/dreams/${id}`),
   createDream: (dream: DreamCreate) => request<DreamOut>('POST', '/dreams', dream),
-  updateDream: (id: number, changes: { title?: string; text?: string }) =>
+  updateDream: (id: number, changes: { title?: string; text?: string; insight?: string | null }) =>
     request<DreamOut>('PATCH', `/dreams/${id}`, changes),
   deleteDream: (id: number) => request<void>('DELETE', `/dreams/${id}`),
   restoreDream: (id: number) => request<DreamOut>('POST', `/dreams/${id}/restore`),
@@ -178,4 +208,9 @@ export const api = {
   share: (id: number, text: string) => request<unknown>('POST', `/dreams/${id}/share`, { text }),
   unshare: (id: number) => request<void>('DELETE', `/dreams/${id}/share`),
   unshareEverything: () => request<void>('DELETE', '/me/shares'),
+
+  readings: (id: number) => request<Reading[]>('GET', `/dreams/${id}/readings`),
+  startReadings: (id: number) => request<Reading[]>('POST', `/dreams/${id}/readings`, { traditions: ['jung'] }),
+  readingFeedback: (readingId: number, resonated: boolean) =>
+    request<void>('POST', `/readings/${readingId}/feedback`, { resonated }),
 }

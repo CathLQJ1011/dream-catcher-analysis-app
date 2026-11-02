@@ -76,3 +76,7 @@
 **Decision:** About 30 AI calls (transcription, suggestions, readings) per user per hour. Server logs record requests without the dream text.
 **Why:** Keeps API costs predictable and protects against abuse, and keeps dreams out of places like log files that are easy to overlook.
 
+
+### 18. Jungian readings come first, written by Claude Sonnet 5.5
+**Decision:** Phase 5 starts with the Jungian reading only, written by `claude-sonnet-5-5` through the official Anthropic SDK. The prompt lives in its own file (`backend/app/prompts/jung_v1.md`) with the whole Jung glossary appended, and every reading stores its model and prompt version. Readings may interpret images the glossary doesn't cover, and the card labels each idea as "Jung glossary" or "Open reading".
+**Why:** One tradition at a time keeps each step small and testable. Sonnet is fast and affordable for this kind of writing, and recording the model and prompt version makes it possible to compare providers and prompt revisions later, as the dream-analysis export recommends. The glossary has only about 25 entries, so sending all of it is simpler than a similarity search and lets the prompt be cached.

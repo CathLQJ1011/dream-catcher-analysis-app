@@ -359,3 +359,63 @@ class RelatedDream(BaseModel):
     dream: DreamSummary
     symbols: list[str]  # dictionary codes the two dreams share
     people: list[str]
+
+
+# ---------- Readings (Phase 5) ----------
+
+Tradition = Literal["jung", "zhougong"]
+
+
+class HeadlineImage(Strict):
+    image: str  # the dreamer's own word for it
+    glossary_id: str | None  # a jg-… code when the glossary fits, otherwise an open reading
+
+
+class DreamShape(Strict):
+    setting: str
+    turning_point: str
+    resolution: str  # "none" when the dream stops without one
+
+
+class Motif(Strict):
+    image: str
+    glossary_id: str | None
+    possibility: str
+    level: Literal["subjective", "objective", "both"]
+
+
+class JungReading(Strict):
+    """What the model returns (docs/jungian-model.md, Output shape). Also the `details` of a Jung reading."""
+
+    headline: HeadlineImage
+    dream_shape: DreamShape
+    dream_ego: str
+    motifs: list[Motif]
+    compensation: str
+    series_note: str | None
+    questions: list[str]
+    dreamwork: str | None
+    reading: str
+    confidence_note: str
+
+
+class ReadingsCreate(Strict):
+    traditions: list[Tradition] = ["jung"]
+
+
+class ReadingFeedback(Strict):
+    resonated: bool
+
+
+class ReadingOut(BaseModel):
+    id: int
+    tradition: Tradition
+    status: Literal["pending", "ready", "failed"]
+    out_of_date: bool
+    reading: str
+    confidence_note: str | None
+    symbols: list[SymbolRef]  # glossary entries the reading cites
+    details: dict  # the full structured reading (JungReading for Jung)
+    error: str | None
+    resonated: bool | None
+    created_at: datetime

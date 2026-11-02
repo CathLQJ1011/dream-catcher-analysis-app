@@ -16,6 +16,16 @@ docker compose up -d --wait db
 
 Both seed scripts are safe to re-run.
 
+## AI readings
+
+Readings call Claude, so they need an API key from console.anthropic.com in `backend/.env` (git ignores it):
+
+```
+ANTHROPIC_API_KEY=sk-ant-…
+```
+
+Without it everything else works, and readings fail with a clear message. The prompt is `app/prompts/jung_v1.md`; when you change it meaningfully, copy it to a new version and bump `PROMPT_VERSION` in `app/services/readings.py`, so old and new readings can be compared. Tests never call Claude.
+
 ## Running the API
 
 ```bash

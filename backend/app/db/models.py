@@ -349,11 +349,18 @@ class Interpretation(Base):
     """One reading per dream per tradition (Phase 5)."""
 
     __tablename__ = "interpretations"
-    __table_args__ = (one_of("tradition", ("zhougong", "jung", "neuro"), "interpretation_tradition_valid"),)
+    __table_args__ = (
+        one_of("tradition", ("zhougong", "jung", "neuro"), "interpretation_tradition_valid"),
+        one_of("status", ("pending", "ready", "failed"), "interpretation_status_valid"),
+    )
 
     id: Mapped[int] = pk()
     dream_id: Mapped[int] = mapped_column(ForeignKey("dreams.id", ondelete="CASCADE"), index=True)
     tradition: Mapped[str] = mapped_column(String(16))
+    # Readings take several seconds, so a row starts as "pending" and the client polls.
+    status: Mapped[str] = mapped_column(String(8), default="ready", server_default="ready")
+    # Set when the dream text changes afterwards; old readings are kept, not deleted.
+    out_of_date: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     reading: Mapped[str] = mapped_column(Text)
     output: Mapped[dict] = mapped_column(JSONB, default=dict)  # the full structured reading
     confidence_note: Mapped[str | None] = mapped_column(Text)

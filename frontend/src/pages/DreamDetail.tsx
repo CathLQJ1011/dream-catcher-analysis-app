@@ -10,10 +10,9 @@ import { DreamArt } from '@/components/dream/DreamArt'
 import { DreamOrb } from '@/components/dream/DreamOrb'
 import { DreamRow } from '@/components/dream/DreamRow'
 import { generatedImages } from '@/data/prototypeState'
-import { sampleReadings } from '@/data/readings'
 import { fromDream, fromSummary, type JournalDream } from '@/data/journal'
 import type { SampleDream } from '@/data/sampleDreams'
-import { api, ApiError, type RelatedDream } from '@/lib/api'
+import { api, ApiError, type Reading, type RelatedDream } from '@/lib/api'
 import { EMOTIONS } from '@/lib/emotions'
 import { parseDate } from '@/lib/dates'
 import { navigate } from '@/lib/router'
@@ -244,9 +243,46 @@ function DreamImage({ dream }: { dream: SampleDream }) {
 
 /* ---------- Readings: yours first ---------- */
 
-function Readings({ dream }: { dream: SampleDream }) {
-  const [insight, setInsight] = useState('')
-  const [revealed, setRevealed] = useState(false)
+const TRADITION_NAMES: Record<Reading['tradition'], string> = { jung: 'Jungian', zhougong: 'Zhougong · 周公' }
+
+function Readings({ dream }: { dream: JournalDream }) {
+  const [insight, setInsight] = useState(dream.insight ?? '')
+  const [readings, setReadings] = useState<Reading[] | null>(null)
+  const [error, setError] = useState('')
+  const pending = readings?.some((r) => r.status === 'pending') ?? false
+
+  useEffect(() => {
+    api
+      .readings(dream.id)
+      .then(setReadings)
+      .catch(() => setReadings([]))
+  }, [dream.id])
+
+  // A reading takes several seconds; check back until it's written.
+  useEffect(() => {
+    if (!pending) return
+    const timer = window.setTimeout(() => {
+      api
+        .readings(dream.id)
+        .then(setReadings)
+        .catch(() => {})
+    }, 2500)
+    return () => window.clearTimeout(timer)
+  }, [pending, readings, dream.id])
+
+  async function interpret() {
+    setError('')
+    try {
+      // Your own reading is saved first, so the AI can build on it.
+      if (insight.trim() !== (dream.insight ?? '')) await api.updateDream(dream.id, { insight: insight.trim() || null })
+      const started = await api.startReadings(dream.id)
+      setReadings((old) => [...(old ?? []).filter((r) => !started.some((s) => s.tradition === r.tradition)), ...started])
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Couldn’t start the reading. Try again.')
+    }
+  }
+
+  const revealed = (readings?.length ?? 0) > 0
 
   return (
     <Section title="Readings">
@@ -263,23 +299,131 @@ function Readings({ dream }: { dream: SampleDream }) {
 
       {revealed ? (
         <div className="-mx-6 mt-2 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2 [scrollbar-width:none]">
-          {sampleReadings(dream).map((r) => (
-            <GlassCard key={r.tradition} className="flex w-[85%] shrink-0 snap-start flex-col gap-4">
-              <span className="flex items-center gap-2 font-mono text-meta uppercase text-fg-muted">
-                <Sparkle className="size-3 text-accent-soft" strokeWidth={1.5} />
-                {r.tradition}
-              </span>
-              <span className="font-serif text-dream italic">“{r.symbol}”</span>
-              <p className="text-fg-secondary">{r.reading}</p>
-            </GlassCard>
+          {readings!.map((r) => (
+            <ReadingCard key={r.tradition} dream={dream} reading={r} wide={readings!.length === 1} onAgain={interpret} />
           ))}
         </div>
       ) : (
-        <Button variant="ghost" className="self-start" onClick={() => setRevealed(true)}>
-          {insight.trim() ? 'Compare with the readings' : 'Skip to the readings'}
-        </Button>
+        readings !== null && (
+          <Button variant="ghost" className="self-start" onClick={interpret}>
+            {insight.trim() ? 'Compare with the readings' : 'Skip to the readings'}
+          </Button>
+        )
+      )}
+      {error && (
+        <p className="text-label font-normal text-ember" role="alert">
+          {error}
+        </p>
       )}
     </Section>
+  )
+}
+
+function ReadingCard({
+  dream,
+  reading: r,
+  wide,
+  onAgain,
+}: {
+  dream: JournalDream
+  reading: Reading
+  wide: boolean
+  onAgain: () => void
+}) {
+  const [resonated, setResonated] = useState(r.resonated)
+  const d = r.details
+  const cited = (code: string | null) => r.symbols.find((s) => s.code === code)
+
+  function answer(value: boolean) {
+    setResonated(value)
+    api.readingFeedback(r.id, value).catch(() => setResonated(r.resonated))
+  }
+
+  return (
+    <GlassCard className={`flex shrink-0 snap-start flex-col gap-4 ${wide ? 'w-full' : 'w-[85%]'}`}>
+      <span className="flex items-center gap-2 font-mono text-meta uppercase text-fg-muted">
+        <Sparkle className="size-3 text-accent-soft" strokeWidth={1.5} />
+        {TRADITION_NAMES[r.tradition]}
+      </span>
+
+      {r.status === 'pending' && (
+        <div className="flex items-center gap-4 py-4">
+          <DreamOrb emotion={dream.emotion} blend={dream.blend} size={32} state="interpreting" glow />
+          <span className="font-mono text-meta uppercase text-fg-muted">Reading your dream…</span>
+        </div>
+      )}
+
+      {r.status === 'failed' && (
+        <>
+          <p className="text-fg-secondary">{r.error}</p>
+          <Button variant="ghost" className="self-start" onClick={onAgain}>
+            Try again
+          </Button>
+        </>
+      )}
+
+      {r.status === 'ready' && (
+        <>
+          {d.headline && <span className="font-serif text-dream italic">“{d.headline.image}”</span>}
+          <p className="text-fg-secondary">{r.reading}</p>
+
+          {d.motifs && d.motifs.length > 0 && (
+            <ul className="flex flex-col gap-4">
+              {d.motifs.map((m) => (
+                <li key={m.image} className="flex flex-col gap-1">
+                  <span className="font-serif text-body italic">{m.image}</span>
+                  <span className="text-label font-normal text-fg-secondary">{m.possibility}</span>
+                  {/* Says where each idea comes from: the curated glossary, or read from the dream itself. */}
+                  <span className="font-mono text-meta uppercase text-fg-muted">
+                    {cited(m.glossary_id) ? `Jung glossary · ${cited(m.glossary_id)!.term_en}` : 'Open reading'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {d.series_note && <p className="text-label font-normal text-fg-secondary">{d.series_note}</p>}
+
+          {d.questions && d.questions.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <span className="font-mono text-meta uppercase text-fg-muted">To sit with</span>
+              <ul className="flex flex-col gap-2 text-label font-normal text-fg-secondary">
+                {d.questions.map((q) => (
+                  <li key={q}>✦ {q}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {d.dreamwork && <p className="text-label font-normal italic text-fg-secondary">{d.dreamwork}</p>}
+          {r.confidence_note && <p className="text-label font-normal text-fg-muted">{r.confidence_note}</p>}
+
+          {r.out_of_date ? (
+            <div className="flex flex-col gap-2">
+              <span className="text-label font-normal text-fg-muted">You edited the dream after this reading.</span>
+              <Button variant="ghost" className="self-start" onClick={onAgain}>
+                Interpret again
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-label font-normal text-fg-muted">
+              <span>Does this resonate?</span>
+              {[true, false].map((value) => (
+                <button
+                  key={String(value)}
+                  type="button"
+                  onClick={() => answer(value)}
+                  aria-pressed={resonated === value}
+                  className={`h-8 rounded-pill px-3 ${resonated === value ? 'bg-raised text-fg' : 'hover:text-fg'}`}
+                >
+                  {value ? 'Yes' : 'Not really'}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </GlassCard>
   )
 }
 
