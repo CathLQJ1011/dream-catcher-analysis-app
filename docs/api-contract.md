@@ -220,6 +220,8 @@ Returns `{ dream, exact }` or `204` if nothing matches, using the user's `memori
 
 **Audio is not kept** (decision 15): it is deleted as soon as the transcript exists, and never stored in the database.
 
+**Not built yet, maybe never:** the iPhone app transcribes on the phone with Apple's speech recognition (decision 21), so no audio reaches the server and `/transcribe` isn't needed there. It stays here for a possible web or Android version.
+
 ---
 
 ## People (v1)

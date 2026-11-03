@@ -53,6 +53,7 @@ No account wall before the first dream: you can capture immediately and sign in 
 
 **Flow:**
 1. **Record or type.** Big orb with mic in the center; tap to record, tap again to stop. The orb pulses with your voice. Below: "or write it" opens the dream textarea (serif, journal-like).
+   - *As built (decision 21):* an **English / 中文** switch under the orb picks the language you'll speak. Each tap adds to the transcript, so you can pause and keep talking. Voice needs the iPhone app; in a browser Capture opens on writing.
 2. **Edit transcript.** Speech-to-text fills the textarea; you fix fragments. The dream is now saved as a draft, so nothing is lost if you close the app.
 3. **Quick check-in** (one screen, all optional except emotion):
    - **Emotion chips**: primary emotion, optional secondary. Two picks = two-tone orb.

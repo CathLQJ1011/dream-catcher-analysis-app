@@ -7,6 +7,7 @@ import { EmotionChip } from '@/components/dream/EmotionChip'
 import { EmotionMapInput, type MapValue } from '@/components/dream/EmotionMapInput'
 import { profile } from '@/data/prototypeState'
 import { ApiError, api, type ElementKind } from '@/lib/api'
+import { DictationError, canDictate, startDictation, type DictationLanguage } from '@/lib/dictation'
 import { parseDate, today } from '@/lib/dates'
 import { EMOTIONS, type Emotion } from '@/lib/emotions'
 import { navigate } from '@/lib/router'
@@ -18,10 +19,6 @@ import { cn } from '@/lib/utils'
 //      symbols from the dream; the dreamer only adjusts what feels off. Saves the dream.
 //   3. Your thoughts: an optional first reading of your own, then the AI reading
 //      starts and the dream opens on it.
-
-// Prototype stand-in for speech-to-text: an invented dream "heard" word by word.
-const DEMO_TRANSCRIPT =
-  'I was in a glass greenhouse at night. Rain was falling inside it but never touched me. My grandmother was watering moths instead of plants, and the floor slowly turned into a shallow lake that reflected a blue moon.'
 
 type Step = 'tell' | 'reading' | 'tag' | 'meaning'
 
@@ -83,21 +80,50 @@ function TellStep({
   onNext: () => void
 }) {
   // Starts the way you chose on Me (voice or text), unless there's already text.
-  const [mode, setMode] = useState<'voice' | 'write'>(text || profile.captureWith === 'text' ? 'write' : 'voice')
+  // Voice needs the iPhone app; a browser always writes.
+  const [mode, setMode] = useState<'voice' | 'write'>(text || profile.captureWith === 'text' || !canDictate ? 'write' : 'voice')
   const [recording, setRecording] = useState(false)
   const [seconds, setSeconds] = useState(0)
-  const words = useRef(DEMO_TRANSCRIPT.split(' '))
+  const [level, setLevel] = useState(0)
+  const [language, setLanguage] = useState<DictationLanguage>(() => (navigator.language.startsWith('zh') ? 'zh-CN' : 'en-US'))
+  const [problem, setProblem] = useState('')
+  const stop = useRef<(() => Promise<void>) | null>(null)
 
-  // While "recording", the transcript appears word by word and a timer runs.
+  // A timer runs while listening.
   useEffect(() => {
     if (!recording) return
-    let i = text ? text.split(' ').length : 0
-    const id = window.setInterval(() => {
-      setSeconds((s) => s + 0.35)
-      if (i < words.current.length) setText(words.current.slice(0, ++i).join(' '))
-    }, 350)
+    const id = window.setInterval(() => setSeconds((s) => s + 1), 1000)
     return () => window.clearInterval(id)
-  }, [recording]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [recording])
+
+  // Leaving Capture stops the microphone.
+  useEffect(() => () => void stop.current?.(), [])
+
+  async function toggleRecording() {
+    if (recording) {
+      await stop.current?.()
+      return
+    }
+    // Each recording continues the transcript, so you can pause and keep talking.
+    const before = text.trim()
+    setProblem('')
+    setSeconds(0)
+    setRecording(true)
+    try {
+      stop.current = await startDictation(language, {
+        onText: (t) => setText(before && t ? `${before} ${t}` : before || t),
+        onLevel: setLevel,
+        onEnd: (p) => {
+          setRecording(false)
+          stop.current = null
+          if (p) setProblem(p)
+        },
+      })
+    } catch (e) {
+      setRecording(false)
+      setProblem(e instanceof DictationError ? e.message : 'Couldn’t start listening. You can write the dream instead.')
+    }
+  }
 
   const heard = text.trim().length > 0
 
@@ -123,10 +149,13 @@ function TellStep({
           <button
             type="button"
             aria-label={recording ? 'Stop recording' : 'Start recording'}
-            onClick={() => setRecording((r) => !r)}
+            onClick={toggleRecording}
             className="relative flex size-44 items-center justify-center"
           >
-            <DreamOrb emotion="lucid" size={heard && !recording ? 120 : 176} state={recording ? 'recording' : 'idle'} className="pointer-events-none absolute transition-all" />
+            {/* The orb swells with your voice. */}
+            <span className="pointer-events-none absolute transition-transform" style={{ transform: `scale(${1 + level * 0.25})` }}>
+              <DreamOrb emotion="lucid" size={heard && !recording ? 120 : 176} state={recording ? 'recording' : 'idle'} className="transition-all" />
+            </span>
             <span className="relative flex size-16 items-center justify-center rounded-pill border border-fg/20 bg-bg/30 text-fg backdrop-blur-glass">
               {recording ? <Square className="size-5" strokeWidth={1.5} /> : <Mic className="size-6" strokeWidth={1.5} />}
             </span>
@@ -134,6 +163,23 @@ function TellStep({
           <span className="font-mono text-meta uppercase text-fg-muted">
             {recording ? `${formatTime(seconds)} · tap to stop` : heard ? 'Tap to keep talking' : 'Tap to record'}
           </span>
+          {!recording && (
+            <Segmented
+              size="sm"
+              label="Language you'll speak"
+              value={language}
+              onChange={setLanguage}
+              options={[
+                { value: 'en-US', label: 'English' },
+                { value: 'zh-CN', label: '中文' },
+              ]}
+            />
+          )}
+          {problem && (
+            <p className="text-center text-label font-normal text-ember" role="alert">
+              {problem}
+            </p>
+          )}
 
           {heard && (
             <div className="flex w-full flex-col gap-2">
@@ -169,10 +215,12 @@ function TellStep({
             rows={10}
             className="w-full resize-none rounded-card bg-raised p-6 font-serif text-dream text-fg outline-none placeholder:text-fg-muted"
           />
-          <button type="button" onClick={() => setMode('voice')} className="flex items-center gap-2 self-start text-label text-fg-secondary hover:text-fg">
-            <Mic className="size-4" strokeWidth={1.5} />
-            Speak instead
-          </button>
+          {canDictate && (
+            <button type="button" onClick={() => setMode('voice')} className="flex items-center gap-2 self-start text-label text-fg-secondary hover:text-fg">
+              <Mic className="size-4" strokeWidth={1.5} />
+              Speak instead
+            </button>
+          )}
         </div>
       )}
     </CaptureFrame>

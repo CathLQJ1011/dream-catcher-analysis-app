@@ -18,6 +18,8 @@ CAP_SERVER_URL=http://10.0.0.118:5173 npm run ios
 
 Then plug in the iPhone, pick it in Xcode, and under Signing & Capabilities choose your Apple ID as the team. A build signed with a free Apple ID stops opening after 7 days; run it from Xcode again.
 
+**Voice capture needs a real iPhone.** The simulator's speech recognizer is missing its language files, so recording there always ends in "Couldn't catch that".
+
 The app shows whatever the dev server serves, so changes to the React code appear without rebuilding in Xcode. Run `npm run ios` again only after changing `capacitor.config.ts` or adding a Capacitor plugin.
 
 ---
