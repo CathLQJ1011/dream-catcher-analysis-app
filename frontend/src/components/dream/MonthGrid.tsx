@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils'
 
 // A month of nights, each with the orbs of the dreams logged on it. Used by
 // Journal and by Manage dreams on Me. Dreams not in `visible` are dimmed.
+// With `onOpen`, tapping a night that has a single dream opens it directly;
+// other nights are selected as usual.
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
@@ -14,12 +16,14 @@ export function MonthGrid({
   dreams: all,
   selected,
   onSelect,
+  onOpen,
   visible,
 }: {
   month: Date
   dreams: JournalDream[]
   selected: string
   onSelect: (iso: string) => void
+  onOpen?: (dream: JournalDream) => void
   visible: Set<number>
 }) {
   const byDate = new Map<string, JournalDream[]>()
@@ -51,7 +55,7 @@ export function MonthGrid({
         const cell = (
           <button
             type="button"
-            onClick={() => onSelect(iso)}
+            onClick={() => (onOpen && dreams.length === 1 ? onOpen(dreams[0]) : onSelect(iso))}
             aria-label={`${date.toDateString()}, ${dreams.length} dreams`}
             aria-pressed={isSelected}
             className="flex flex-col items-center gap-1 py-1"

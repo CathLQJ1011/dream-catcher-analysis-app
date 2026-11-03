@@ -12,27 +12,39 @@ import { EMOTIONS, type Emotion } from '@/lib/emotions'
 import { navigate } from '@/lib/router'
 import { cn } from '@/lib/utils'
 
-// Capture (docs/screens.md §1) in two clean steps:
+// Capture (docs/screens.md §1) in three clean steps:
 //   1. Tell it: only the dream, spoken or written. Nothing else on screen.
 //   2. Tag it: the AI has already filled in feeling, map, vividness, lucidity and
-//      symbols from the dream; the dreamer only adjusts what feels off.
+//      symbols from the dream; the dreamer only adjusts what feels off. Saves the dream.
+//   3. Your thoughts: an optional first reading of your own, then the AI reading
+//      starts and the dream opens on it.
 
 // Prototype stand-in for speech-to-text: an invented dream "heard" word by word.
 const DEMO_TRANSCRIPT =
   'I was in a glass greenhouse at night. Rain was falling inside it but never touched me. My grandmother was watering moths instead of plants, and the floor slowly turned into a shallow lake that reflected a blue moon.'
 
-type Step = 'tell' | 'reading' | 'tag'
+type Step = 'tell' | 'reading' | 'tag' | 'meaning'
 
 export default function Capture() {
   const [step, setStep] = useState<Step>('tell')
   const [text, setText] = useState('')
   const [date, setDate] = useState(today)
+  const [savedId, setSavedId] = useState<number | null>(null)
 
   if (step === 'reading') return <ReadingStep onDone={() => setStep('tag')} />
+  if (step === 'meaning' && savedId !== null) return <MeaningStep dreamId={savedId} />
   return step === 'tell' ? (
     <TellStep text={text} setText={setText} date={date} setDate={setDate} onNext={() => setStep('reading')} />
   ) : (
-    <TagStep text={text} date={date} onBack={() => setStep('tell')} />
+    <TagStep
+      text={text}
+      date={date}
+      onBack={() => setStep('tell')}
+      onSaved={(id) => {
+        setSavedId(id)
+        setStep('meaning')
+      }}
+    />
   )
 }
 
@@ -92,7 +104,7 @@ function TellStep({
   return (
     <CaptureFrame
       left={<IconLink label="Close" onClick={() => navigate('/journal')} icon={<X className="size-5" strokeWidth={1.5} />} />}
-      step="1 / 2"
+      step="1 / 3"
       action={
         <Button className="w-full" disabled={!heard || recording} onClick={onNext}>
           Continue
@@ -171,7 +183,17 @@ function TellStep({
 
 type Proposed = { term: string; kind: string; on: boolean }
 
-function TagStep({ text, date, onBack }: { text: string; date: string; onBack: () => void }) {
+function TagStep({
+  text,
+  date,
+  onBack,
+  onSaved,
+}: {
+  text: string
+  date: string
+  onBack: () => void
+  onSaved: (id: number) => void
+}) {
   // Everything starts from the AI's read of the dream (prototype: keyword cues).
   const [guess] = useState(() => inferTags(text))
   const [emotions, setEmotions] = useState<Emotion[]>(guess.emotions)
@@ -221,8 +243,8 @@ function TagStep({ text, date, onBack }: { text: string; date: string; onBack: (
         ...(residue.trim() && { day_residue: [{ note: residue.trim() }] }),
         ...(waking.trim() && { mood_on_waking: waking.trim() }),
       })
-      // Land on Journal with the new dream highlighted; Back won't return to the capture form.
-      navigate(`/journal?saved=${dream.id}&on=${dream.dreamed_on}`, { replace: true })
+      // Saved now, so nothing is lost if the app closes during step 3.
+      onSaved(dream.id)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Couldn’t save. Try again.')
       setSaving(false)
@@ -232,7 +254,7 @@ function TagStep({ text, date, onBack }: { text: string; date: string; onBack: (
   return (
     <CaptureFrame
       left={<IconLink label="Back to the dream" onClick={onBack} icon={<ChevronLeft className="size-5" strokeWidth={1.5} />} />}
-      step="2 / 2"
+      step="2 / 3"
       action={
         <>
           {error && (
@@ -395,6 +417,70 @@ function TagStep({ text, date, onBack }: { text: string; date: string; onBack: (
           </div>
         )}
       </section>
+    </CaptureFrame>
+  )
+}
+
+/* ---------- Step 3: Your thoughts, then the reading ---------- */
+
+function MeaningStep({ dreamId }: { dreamId: number }) {
+  const [insight, setInsight] = useState('')
+  const [starting, setStarting] = useState(false)
+  const [error, setError] = useState('')
+  // The dream is already saved, so leaving goes to it rather than back into the form.
+  const openDream = (hash = '') => navigate(`/dream/${dreamId}${hash}`, { replace: true })
+
+  async function read(withInsight: boolean) {
+    setStarting(true)
+    setError('')
+    try {
+      // Your own reading is saved first, so the AI can build on it.
+      if (withInsight && insight.trim()) await api.updateDream(dreamId, { insight: insight.trim() })
+      await api.startReadings(dreamId)
+      openDream('#readings')
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Couldn’t start the reading. Try again.')
+      setStarting(false)
+    }
+  }
+
+  return (
+    <CaptureFrame
+      left={<IconLink label="Open the dream" onClick={() => openDream()} icon={<X className="size-5" strokeWidth={1.5} />} />}
+      step="3 / 3"
+      action={
+        <>
+          {error && (
+            <p className="mb-2 text-center text-label font-normal text-ember" role="alert">
+              {error}
+            </p>
+          )}
+          <Button className="w-full" disabled={starting} onClick={() => read(true)}>
+            {starting ? 'Starting…' : 'Read my dream'}
+          </Button>
+          <Button variant="ghost" className="mt-2 w-full" disabled={starting} onClick={() => read(false)}>
+            Skip
+          </Button>
+        </>
+      }
+    >
+      <h1 className="font-serif text-title">
+        What do you think it means?
+        <br />
+        <em className="text-fg-secondary">Your first thought, before anyone else’s.</em>
+      </h1>
+      <p className="mt-4 flex items-start gap-2 text-label font-normal text-fg-secondary">
+        <Sparkle className="mt-1 size-3 shrink-0 text-accent-soft" strokeWidth={1.5} />
+        Optional. The reading starts from what you write here.
+      </p>
+      <textarea
+        value={insight}
+        onChange={(e) => setInsight(e.target.value)}
+        aria-label="What do you think it means?"
+        placeholder="Maybe it’s about…"
+        rows={6}
+        className="mt-12 w-full resize-none rounded-card bg-raised p-6 font-serif text-dream text-fg outline-none placeholder:text-fg-muted"
+      />
     </CaptureFrame>
   )
 }

@@ -166,6 +166,7 @@ export default function Journal() {
           dreams={dreams}
           selected={selected}
           onSelect={setSelected}
+          onOpen={(d) => navigate(`/dream/${d.id}`)}
           visible={new Set(matches.map((d) => d.id))}
         />
       )}

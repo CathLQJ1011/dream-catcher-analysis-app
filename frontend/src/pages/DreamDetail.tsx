@@ -258,6 +258,13 @@ function Readings({ dream }: { dream: JournalDream }) {
       .catch(() => setReadings([]))
   }, [dream.id])
 
+  // Arriving from Capture (/dream/12#readings): bring the reading being written into view.
+  useEffect(() => {
+    if (readings !== null && window.location.hash === '#readings') {
+      document.getElementById('readings')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [readings === null]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // A reading takes several seconds; check back until it's written.
   useEffect(() => {
     if (!pending) return
@@ -285,7 +292,7 @@ function Readings({ dream }: { dream: JournalDream }) {
   const revealed = (readings?.length ?? 0) > 0
 
   return (
-    <Section title="Readings">
+    <Section title="Readings" id="readings">
       <label className="flex flex-col gap-2">
         <span className="font-serif text-dream italic text-fg-secondary">What do you think it means?</span>
         <textarea
@@ -533,9 +540,9 @@ export function DreamShareCard({ dream }: { dream: SampleDream }) {
   )
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, id, children }: { title: string; id?: string; children: ReactNode }) {
   return (
-    <section className="mt-12 flex flex-col gap-4">
+    <section id={id} className="mt-12 flex scroll-mt-6 flex-col gap-4">
       <h2 className="font-mono text-meta uppercase text-fg-muted">{title}</h2>
       {children}
     </section>

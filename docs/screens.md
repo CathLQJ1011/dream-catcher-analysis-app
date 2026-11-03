@@ -93,7 +93,7 @@ Top to bottom:
 
 **First thing seen:** this month's calendar. **Most important element:** the orbs on the calendar. One glance tells you how the month felt.
 
-- **Month calendar:** each day with a dream shows its orb (color = emotion, size = vividness); several dreams in one night = a small cluster. Today has a hairline ring. Swipe for previous months. Tap a day → that night's dream(s).
+- **Month calendar:** each day with a dream shows its orb (color = emotion, size = vividness); several dreams in one night = a small cluster. Today has a hairline ring. Swipe for previous months. Tap a night with one dream → that dream opens. Tap a night with several → the list below shows that night's dreams.
 - **Toggle: Calendar / Archive.** Archive is a grid of dream cards (catalog plates with the top symbol as headline), newest first.
 - **Search and filter**, shared by both views: free text, emotion, symbol, person, place, tradition, lucid only, nightmares only.
 - **Empty state:** dithered orb + "No dreams yet. / *The first one is the hardest.*" + a button to Capture.
@@ -180,9 +180,10 @@ Capture → Dream Detail → Journal → Patterns (Emotion, Symbols, Rhythms fir
 
 *Added after building clickable versions of every page.*
 
-### Capture is two steps
+### Capture is three steps
 1. **Tell it.** Only the dream on screen: the record orb, or "Write it instead", plus a small **"Night of · Last night"** pill to change the date. The transcript appears as you speak and stays editable.
-2. **Tag it, already filled in.** After a short "Reading your dream…" moment, the AI has pre-filled feeling, map position, vividness, lucidity and symbols. A ✦ marks each suggestion until you change it, and one line says to adjust freely to match how it felt. Each field label defines its own term, with the term itself slightly bolder ("**Vividness** · how clear and detailed the dream felt…").
+2. **Tag it, already filled in.** After a short "Reading your dream…" moment, the AI has pre-filled feeling, map position, vividness, lucidity and symbols. A ✦ marks each suggestion until you change it, and one line says to adjust freely to match how it felt. Each field label defines its own term, with the term itself slightly bolder ("**Vividness** · how clear and detailed the dream felt…"). "Save dream" saves it here.
+3. **What do you think it means?** Optional: your own first reading, which the AI reading builds on. "Read my dream" (or "Skip") starts the reading and opens the dream at its Readings section, where the orb shimmers until the reading is ready. × opens the dream without a reading.
 
 ### Sharing
 - **A share icon wherever there's something worth showing:** Dream Detail (top right), Patterns (header, shares the current lens and period), Journal (next to the month arrows, shares the month as orbs).
@@ -201,7 +202,8 @@ Capture → Dream Detail → Journal → Patterns (Emotion, Symbols, Rhythms fir
 - Sharing your own dream always goes through a preview that shows exactly what others will see, with people's names replaced by "someone".
 
 ### Saving a dream
-- "Save dream" at the end of Capture lands on **Journal**, opened to that night, with the new dream highlighted and a "Dream saved · Open" confirmation. Back doesn't return to the capture form.
+- Capture ends on **the dream's own page**, with its reading being written (decision 20). Back doesn't return to the capture form.
+- *Earlier version:* "Save dream" landed on Journal with a "Dream saved · Open" confirmation. Testing showed the reading was too easy to miss.
 
 ### One year ago tonight (Journal)
 - A small card above the calendar shows the dream from this exact night last year, or the closest one within 3 days. Tap to open it, × to hide it for the day. No match, no card.
