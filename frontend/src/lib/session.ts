@@ -38,6 +38,11 @@ export async function signIn(mode: 'login' | 'register', email: string, password
   set(await (mode === 'login' ? api.login(email, password) : api.register(email, password)))
 }
 
+/** After the profile changes, so every screen shows the saved version. */
+export function setUser(user: User) {
+  set(user)
+}
+
 export async function signOut() {
   await api.logout().catch(() => {}) // signed out locally even if the server can't be reached
   set(null)

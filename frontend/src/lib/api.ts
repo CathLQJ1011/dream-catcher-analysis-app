@@ -49,10 +49,17 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 /* ---------- Shapes ---------- */
 
+/** Which orb represents you on Me: automatic, mixed by hand, or borrowed from a dream. */
+export type ProfileOrb =
+  | { mode: 'auto' }
+  | { mode: 'mix'; emotion: Emotion; blend?: Emotion }
+  | { mode: 'dream'; dream_id: number }
+
 export type User = {
   id: number
   email: string
   display_name: string
+  profile_orb: ProfileOrb
   capture_with: 'voice' | 'text'
   memories: 'all' | 'gentle' | 'off'
   stats: { dreams: number; since: string | null; shared: number; top_emotions: Emotion[] }
@@ -187,12 +194,16 @@ export const api = {
   login: (email: string, password: string) => request<User>('POST', '/auth/login', { email, password }),
   logout: () => request<void>('POST', '/auth/logout'),
   me: () => request<User>('GET', '/me'),
+  updateMe: (changes: { display_name?: string; profile_orb?: ProfileOrb }) => request<User>('PATCH', '/me', changes),
 
   listDreams: (cursor?: string) =>
     request<{ items: DreamSummary[]; next_cursor: string | null }>(
       'GET',
       `/dreams?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
     ),
+  /** Searches titles, dream text and tags on the server. */
+  searchDreams: (q: string) =>
+    request<{ items: DreamSummary[] }>('GET', `/dreams?limit=100&q=${encodeURIComponent(q)}`),
   getDream: (id: number) => request<DreamOut>('GET', `/dreams/${id}`),
   createDream: (dream: DreamCreate) => request<DreamOut>('POST', '/dreams', dream),
   updateDream: (id: number, changes: { title?: string; text?: string; insight?: string | null }) =>

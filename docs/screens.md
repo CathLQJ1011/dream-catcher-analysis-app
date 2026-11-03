@@ -214,4 +214,5 @@ Capture → Dream Detail → Journal → Patterns (Emotion, Symbols, Rhythms fir
 - **Edit profile:** one sheet for name and orb, saved together. Opened by the "Edit profile" button, or by tapping the orb or name. No badges sit on the orb. The name is only shown to you; shared dreams stay anonymous.
 - **Start with Voice / Text** also changes the Capture button in the tab bar: a mic for voice, a quill for writing, and Capture opens in that mode.
 - **Profile orb:** tap it to choose **Auto** (your recent feelings), **Mix** (pick one or two emotions), or **From a dream** (wear the orb of a dream you love).
+  - *From a dream* lists your own dreams: a search box (words, symbols, people) and a month calendar where tapping a night narrows the list to it. Each row shows symbol, title, date and dream number, so dreams with the same symbol or title stay distinct. The choice is saved to your account by dream id.
 - **Shared dreams** opens into a list in the same row format as Patterns' lists.

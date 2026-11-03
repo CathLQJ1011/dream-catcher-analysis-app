@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import { AppShell } from '@/components/app/AppShell'
 import { Segmented } from '@/components/app/Segmented'
 import { Button } from '@/components/ui/button'
@@ -7,33 +7,45 @@ import { Sheet } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
 import { DreamOrb } from '@/components/dream/DreamOrb'
 import { EmotionChip } from '@/components/dream/EmotionChip'
-import { profile, type ProfileOrb } from '@/data/prototypeState'
-import { PROTOTYPE_TODAY, SAMPLE_DREAMS, findDream } from '@/data/sampleDreams'
+import { MonthGrid } from '@/components/dream/MonthGrid'
+import { fromSummary, loadJournal, type JournalDream } from '@/data/journal'
+import { profile } from '@/data/prototypeState'
+import { ApiError, api, type ProfileOrb } from '@/lib/api'
 import { EMOTIONS, type Emotion } from '@/lib/emotions'
-import { daysBetween, parseDate } from '@/lib/dates'
+import { formatShortDate, parseDate, today } from '@/lib/dates'
 import { navigate } from '@/lib/router'
-import { signOut, useSession } from '@/lib/session'
+import { setUser, signOut, useSession } from '@/lib/session'
 import { cn } from '@/lib/utils'
 
 // Me (docs/screens.md §6): who you are here, and where trust lives.
 // Deliberately no streaks or badges.
 
+const FALLBACK_NAME = 'Anonymous dreamer'
+
 export default function Me() {
-  const recent = SAMPLE_DREAMS.filter((d) => daysBetween(d.date, PROTOTYPE_TODAY) < 90)
-  const [first, second] = topEmotions(recent)
+  const session = useSession()
+  const user = typeof session === 'object' ? session : null
+  const [first, second] = user?.stats.top_emotions ?? []
   const label = (e?: Emotion) => EMOTIONS.find((x) => x.id === e)?.label
+
+  // Your dreams, for an orb borrowed from one and for choosing it.
+  const [dreams, setDreams] = useState<JournalDream[]>([])
+  useEffect(() => {
+    loadJournal()
+      .then(setDreams)
+      .catch(() => {}) // the orb falls back to Auto without them
+  }, [])
 
   const [traditions, setTraditions] = useState({ jung: true, zhougong: true, neuro: true })
   const [depth, setDepth] = useState<'minimal' | 'full'>('minimal')
   const [start, setStart] = useState(profile.captureWith)
-  const [name, setName] = useState(profile.name)
   const [memories, setMemories] = useState(profile.memories)
   const [reminder, setReminder] = useState(true)
   const [status, setStatus] = useState('')
-  const [orb, setOrb] = useState<ProfileOrb>(profile.orb)
   const [editOpen, setEditOpen] = useState(false)
-  const shown = resolveOrb(orb, first, second)
-  const session = useSession()
+  const name = user?.display_name || FALLBACK_NAME
+  const orb = user?.profile_orb ?? { mode: 'auto' }
+  const shown = resolveOrb(orb, dreams, first, second)
 
   return (
     <AppShell>
@@ -47,9 +59,13 @@ export default function Me() {
           <button type="button" onClick={() => setEditOpen(true)} className="font-serif text-title">
             {name}
           </button>
-          <span className="font-mono text-meta uppercase text-fg-muted">
-            {SAMPLE_DREAMS.length} dreams · since {firstMonth()}
-          </span>
+          {user && (
+            <span className="font-mono text-meta uppercase text-fg-muted">
+              {user.stats.dreams === 0
+                ? 'No dreams yet'
+                : `${user.stats.dreams} ${user.stats.dreams === 1 ? 'dream' : 'dreams'}${user.stats.since ? ` · since ${monthYear(user.stats.since)}` : ''}`}
+            </span>
+          )}
           <button
             type="button"
             onClick={() => setEditOpen(true)}
@@ -84,14 +100,12 @@ export default function Me() {
         key={String(editOpen)} // fresh drafts each time it opens; Cancel discards edits
         open={editOpen}
         onClose={() => setEditOpen(false)}
-        currentName={name}
+        currentName={user?.display_name ?? ''}
         currentOrb={orb}
-        auto={{ emotion: first ?? 'neutral', blend: second }}
-        onSave={(nextName, nextOrb) => {
-          profile.name = nextName
-          profile.orb = nextOrb
-          setName(nextName)
-          setOrb(nextOrb)
+        dreams={dreams}
+        auto={{ emotion: first, blend: second }}
+        onSave={async (nextName, nextOrb) => {
+          setUser(await api.updateMe({ display_name: nextName, profile_orb: nextOrb }))
           setEditOpen(false)
         }}
       />
@@ -192,11 +206,11 @@ export default function Me() {
   )
 }
 
-// What the profile orb looks like for each mode.
-function resolveOrb(orb: ProfileOrb, first?: Emotion, second?: Emotion) {
+// What the profile orb looks like for each mode. A dream that's gone falls back to Auto.
+function resolveOrb(orb: ProfileOrb, dreams: JournalDream[], first?: Emotion, second?: Emotion) {
   if (orb.mode === 'mix') return { emotion: orb.emotion, blend: orb.blend, seed: undefined }
   if (orb.mode === 'dream') {
-    const d = findDream(orb.number)
+    const d = dreams.find((x) => x.id === orb.dream_id)
     if (d) return { emotion: d.emotion, blend: d.blend, seed: d.number }
   }
   return { emotion: first ?? ('neutral' as Emotion), blend: second, seed: undefined }
@@ -208,6 +222,7 @@ function ProfileSheet({
   onClose,
   currentName,
   currentOrb: current,
+  dreams,
   auto,
   onSave,
 }: {
@@ -215,17 +230,40 @@ function ProfileSheet({
   onClose: () => void
   currentName: string
   currentOrb: ProfileOrb
-  auto: { emotion: Emotion; blend?: Emotion }
-  onSave: (name: string, orb: ProfileOrb) => void
+  dreams: JournalDream[]
+  auto: { emotion?: Emotion; blend?: Emotion }
+  onSave: (name: string, orb: ProfileOrb) => Promise<void>
 }) {
   const [draftName, setDraftName] = useState(currentName)
   const [mode, setMode] = useState<ProfileOrb['mode']>(current.mode)
   const [mix, setMix] = useState<Emotion[]>(current.mode === 'mix' ? [current.emotion, ...(current.blend ? [current.blend] : [])] : ['lucid'])
-  const [dreamNo, setDreamNo] = useState(current.mode === 'dream' ? current.number : SAMPLE_DREAMS[0].number)
+  const [dreamId, setDreamId] = useState<number | null>(current.mode === 'dream' ? current.dream_id : null)
+  // A dream picked in the search results may not be in the loaded list yet.
+  const [picked, setPicked] = useState<JournalDream | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
-  const draft: ProfileOrb =
-    mode === 'mix' ? { mode, emotion: mix[0] ?? 'neutral', blend: mix[1] } : mode === 'dream' ? { mode, number: dreamNo } : { mode }
-  const preview = resolveOrb(draft, auto.emotion, auto.blend)
+  const draft: ProfileOrb | null =
+    mode === 'mix'
+      ? { mode, emotion: mix[0] ?? 'neutral', blend: mix[1] }
+      : mode === 'dream'
+        ? dreamId === null
+          ? null
+          : { mode, dream_id: dreamId }
+        : { mode }
+  const preview = resolveOrb(draft ?? current, picked ? [picked, ...dreams] : dreams, auto.emotion, auto.blend)
+
+  async function save() {
+    if (!draft) return
+    setSaving(true)
+    setError('')
+    try {
+      await onSave(draftName.trim() || FALLBACK_NAME, draft)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Couldn’t save. Try again.')
+      setSaving(false)
+    }
+  }
 
   return (
     <Sheet open={open} onClose={onClose} title="Edit profile">
@@ -236,7 +274,7 @@ function ProfileSheet({
           maxLength={32}
           onChange={(e) => setDraftName(e.target.value)}
           aria-label="Your name"
-          placeholder="Anonymous dreamer"
+          placeholder={FALLBACK_NAME}
           className="w-full border-b border-hairline bg-transparent pb-2 text-center font-serif text-title text-fg outline-none placeholder:text-fg-muted focus:border-accent-soft/60"
         />
         <span className="text-center text-label font-normal text-fg-muted">Only shown to you. Shared dreams stay anonymous.</span>
@@ -274,32 +312,183 @@ function ProfileSheet({
         </div>
       )}
       {mode === 'dream' && (
-        <div className="flex flex-col gap-2">
-          <span className="text-label font-normal text-fg-muted">Wear the orb of a dream you love.</span>
-          <div className="grid grid-cols-4 gap-2">
-            {[...SAMPLE_DREAMS].reverse().map((d) => (
+        <DreamPicker
+          dreams={dreams}
+          value={dreamId}
+          onChange={(d) => {
+            setDreamId(d.id)
+            setPicked(d)
+          }}
+        />
+      )}
+      {error && (
+        <p className="text-label font-normal text-ember" role="alert">
+          {error}
+        </p>
+      )}
+      <Button disabled={!draft || saving} onClick={save}>
+        {saving ? 'Saving…' : mode === 'dream' && !draft ? 'Pick a dream' : 'Save'}
+      </Button>
+    </Sheet>
+  )
+}
+
+// Choosing one dream among many: search everything, or browse a month and narrow to a night.
+// Rows show the date and dream number as well as the symbol, so look-alike dreams stay distinct.
+function DreamPicker({
+  dreams,
+  value,
+  onChange,
+}: {
+  dreams: JournalDream[]
+  value: number | null
+  onChange: (dream: JournalDream) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<JournalDream[]>([])
+  const searching = query.trim().length > 0
+
+  // Opens on the month of the chosen dream, else the newest dream's month.
+  const anchor = dreams.find((d) => d.id === value)?.date ?? dreams.map((d) => d.date).sort().at(-1) ?? today()
+  const [month, setMonth] = useState(() => {
+    const d = parseDate(anchor)
+    return new Date(d.getFullYear(), d.getMonth(), 1)
+  })
+  const [night, setNight] = useState<string | null>(null)
+
+  // The server searches titles, dream text and tags; wait for a pause in typing.
+  useEffect(() => {
+    const q = query.trim()
+    if (!q) return
+    const id = window.setTimeout(() => {
+      api
+        .searchDreams(q)
+        .then((r) => setResults(r.items.map(fromSummary)))
+        .catch(() => setResults([]))
+    }, 300)
+    return () => window.clearTimeout(id)
+  }, [query])
+
+  const monthKey = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`
+  const shown = searching
+    ? results
+    : dreams
+        .filter((d) => (night ? d.date === night : d.date.startsWith(monthKey)))
+        .sort((a, b) => b.date.localeCompare(a.date) || b.number - a.number)
+  const changeMonth = (n: number) => {
+    setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1))
+    setNight(null)
+  }
+
+  if (dreams.length === 0) {
+    return <p className="text-body text-fg-secondary">Once you’ve saved a dream, you can wear its orb here.</p>
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <span className="text-label font-normal text-fg-muted">Wear the orb of a dream you love.</span>
+      <div className="flex h-10 items-center gap-2 rounded-pill bg-bg pl-4 pr-1">
+        <Search className="size-4 shrink-0 text-fg-muted" strokeWidth={1.5} />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search your dreams"
+          placeholder="Search words, symbols, people…"
+          className="min-w-0 flex-1 bg-transparent text-body text-fg outline-none placeholder:text-fg-muted"
+        />
+        {searching && (
+          <button
+            type="button"
+            aria-label="Clear search"
+            onClick={() => setQuery('')}
+            className="flex size-8 items-center justify-center rounded-pill text-fg-muted hover:text-fg"
+          >
+            <X className="size-4" strokeWidth={1.5} />
+          </button>
+        )}
+      </div>
+
+      {!searching && (
+        <div>
+          <div className="flex items-center justify-between">
+            <span className="font-serif text-dream">{month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+            <div className="flex">
               <button
-                key={d.number}
                 type="button"
-                aria-pressed={dreamNo === d.number}
-                aria-label={d.title}
-                onClick={() => setDreamNo(d.number)}
-                className={cn(
-                  'flex flex-col items-center gap-2 rounded-card border py-3 transition',
-                  dreamNo === d.number ? 'border-accent-soft/60 bg-glass' : 'border-transparent hover:bg-glass',
-                )}
+                aria-label="Previous month"
+                onClick={() => changeMonth(-1)}
+                className="flex size-10 items-center justify-center rounded-pill text-fg-muted transition hover:text-fg"
               >
-                <DreamOrb emotion={d.emotion} blend={d.blend} size={36} glow={false} state="still" seed={d.number} />
-                <span className="max-w-full truncate px-1 font-serif text-label font-normal" lang={/\p{Script=Han}/u.test(d.symbol) ? 'zh-Hans' : undefined}>
-                  {d.symbol}
-                </span>
+                <ChevronLeft className="size-4" strokeWidth={1.5} />
               </button>
-            ))}
+              <button
+                type="button"
+                aria-label="Next month"
+                onClick={() => changeMonth(1)}
+                className="flex size-10 items-center justify-center rounded-pill text-fg-muted transition hover:text-fg"
+              >
+                <ChevronRight className="size-4" strokeWidth={1.5} />
+              </button>
+            </div>
           </div>
+          <MonthGrid
+            month={month}
+            dreams={dreams}
+            selected={night ?? ''}
+            onSelect={(iso) => setNight((cur) => (cur === iso ? null : iso))}
+            visible={new Set(dreams.map((d) => d.id))}
+          />
         </div>
       )}
-      <Button onClick={() => onSave(draftName.trim() || 'Anonymous dreamer', draft)}>Save</Button>
-    </Sheet>
+
+      <span className="font-mono text-meta uppercase text-fg-muted">
+        {searching
+          ? `${shown.length} ${shown.length === 1 ? 'match' : 'matches'}`
+          : night
+            ? formatShortDate(night)
+            : month.toLocaleDateString('en-US', { month: 'long' })}
+      </span>
+      {shown.length === 0 ? (
+        <p className="font-serif text-dream italic text-fg-secondary">
+          {searching ? 'Nothing matches that search.' : night ? 'No dream logged this night.' : 'No dreams this month.'}
+        </p>
+      ) : (
+        <ul className="-mx-2 flex flex-col">
+          {shown.map((d) => (
+            <PickRow key={d.id} dream={d} selected={d.id === value} onPick={() => onChange(d)} />
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function PickRow({ dream: d, selected, onPick }: { dream: JournalDream; selected: boolean; onPick: () => void }) {
+  return (
+    <li>
+      <button
+        type="button"
+        aria-pressed={selected}
+        onClick={onPick}
+        className={cn('flex w-full items-center gap-4 rounded-card px-2 py-3 text-left transition', selected ? 'bg-glass' : 'hover:bg-glass')}
+      >
+        <span className="flex size-11 shrink-0 items-center justify-center">
+          <DreamOrb emotion={d.emotion} blend={d.blend} size={20 + d.vividness * 24} glow={false} state="still" seed={d.number} />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="flex items-baseline gap-2">
+            <span className="shrink-0 font-serif text-dream" lang={/\p{Script=Han}/u.test(d.symbol) ? 'zh-Hans' : undefined}>
+              {d.symbol}
+            </span>
+            <span className="truncate text-label font-normal text-fg-secondary">{d.title}</span>
+          </span>
+          <span className="font-mono text-meta uppercase text-fg-muted">
+            {formatShortDate(d.date)} · Dream {String(d.number).padStart(3, '0')}
+          </span>
+        </span>
+        {selected && <Check className="size-4 shrink-0 text-accent-soft" strokeWidth={1.5} aria-hidden />}
+      </button>
+    </li>
   )
 }
 
@@ -324,14 +513,6 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   )
 }
 
-function firstMonth() {
-  const first = SAMPLE_DREAMS.reduce((min, d) => (d.date < min ? d.date : min), SAMPLE_DREAMS[0].date)
-  return parseDate(first).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-}
-
-function topEmotions(dreams: typeof SAMPLE_DREAMS): [Emotion?, Emotion?] {
-  const counts = new Map<Emotion, number>()
-  for (const d of dreams) for (const e of [d.emotion, d.blend]) if (e) counts.set(e, (counts.get(e) ?? 0) + 1)
-  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([e]) => e)
-  return [ranked[0], ranked[1]]
+function monthYear(iso: string) {
+  return parseDate(iso).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 }

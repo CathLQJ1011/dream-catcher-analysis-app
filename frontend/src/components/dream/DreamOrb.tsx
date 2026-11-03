@@ -72,7 +72,8 @@ export function DreamOrb({
       {glow && (
         <div
           className={cn(
-            'absolute -inset-1/2 rounded-pill',
+            // Glow spills past the orb; it mustn't catch taps meant for what's underneath.
+            'pointer-events-none absolute -inset-1/2 rounded-pill',
             state === 'recording' && 'motion-safe:animate-pulse',
           )}
           style={{

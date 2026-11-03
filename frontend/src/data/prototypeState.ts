@@ -1,5 +1,4 @@
 import { SAMPLE_COMMENTS, STARTER_FOLDERS, type Comment } from '@/data/community'
-import type { Emotion } from '@/lib/emotions'
 import type { MemoryPref } from '@/lib/memories'
 
 // In-memory state for the prototype, kept outside components so it survives
@@ -17,23 +16,13 @@ export const community = {
   seen: new Set<string>(),
 }
 
-/** Which orb represents you on Me: automatic, mixed by hand, or borrowed from a dream. */
-export type ProfileOrb =
-  | { mode: 'auto' }
-  | { mode: 'mix'; emotion: Emotion; blend?: Emotion }
-  | { mode: 'dream'; number: number }
-
 export const profile: {
-  orb: ProfileOrb
-  name: string
   captureWith: 'voice' | 'text'
   /** "This time last year" on Journal: all dreams, calm ones only, or off. */
   memories: MemoryPref
   /** The date whose memory card was swiped away, so it stays hidden that day. */
   memoryDismissed: string | null
 } = {
-  orb: { mode: 'auto' },
-  name: 'Anonymous dreamer',
   captureWith: 'voice',
   memories: 'calm',
   memoryDismissed: null,
