@@ -88,6 +88,7 @@ function TellStep({
   const [language, setLanguage] = useState<DictationLanguage>(() => (navigator.language.startsWith('zh') ? 'zh-CN' : 'en-US'))
   const [problem, setProblem] = useState('')
   const stop = useRef<(() => Promise<void>) | null>(null)
+  const loudest = useRef(0)
 
   // A timer runs while listening.
   useEffect(() => {
@@ -95,6 +96,13 @@ function TellStep({
     const id = window.setInterval(() => setSeconds((s) => s + 1), 1000)
     return () => window.clearInterval(id)
   }, [recording])
+
+  // iOS hands over silence, not an error, when the microphone can't hear: say so.
+  useEffect(() => {
+    if (recording && seconds === 4 && loudest.current < 0.05) {
+      setProblem('Your microphone isn’t picking anything up. Check that nothing covers it, or try Voice Memos.')
+    }
+  }, [recording, seconds])
 
   // Leaving Capture stops the microphone.
   useEffect(() => () => void stop.current?.(), [])
@@ -108,11 +116,15 @@ function TellStep({
     const before = text.trim()
     setProblem('')
     setSeconds(0)
+    loudest.current = 0
     setRecording(true)
     try {
       stop.current = await startDictation(language, {
         onText: (t) => setText(before && t ? `${before} ${t}` : before || t),
-        onLevel: setLevel,
+        onLevel: (l) => {
+          loudest.current = Math.max(loudest.current, l)
+          setLevel(l)
+        },
         onEnd: (p) => {
           setRecording(false)
           stop.current = null

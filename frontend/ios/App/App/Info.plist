@@ -24,6 +24,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>During development, Dream Catcher loads from your Mac on the same Wi-Fi.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Dream Catcher listens while you tell a dream, so it can write it down for you. The recording isn't kept.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
