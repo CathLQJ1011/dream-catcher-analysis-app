@@ -7,7 +7,7 @@ import { DreamOrb } from '@/components/dream/DreamOrb'
 import { EmotionChip } from '@/components/dream/EmotionChip'
 import { EmotionMapInput, type MapValue } from '@/components/dream/EmotionMapInput'
 import { profile } from '@/data/prototypeState'
-import { ApiError, api, type DreamSuggestion, type ElementKind } from '@/lib/api'
+import { ApiError, api, type DreamSuggestion } from '@/lib/api'
 import { DictationError, canDictate, startDictation, type DictationLanguage } from '@/lib/dictation'
 import { parseDate, today } from '@/lib/dates'
 import { EMOTIONS, core, edge, type Emotion } from '@/lib/emotions'
@@ -274,7 +274,10 @@ function TellStep({
 
 /* ---------- Step 2: Tag it ---------- */
 
-type Proposed = { term: string; kind: string; on: boolean }
+// A tag on step 2. `ai` marks a suggestion (Claude's, or the keyword guess); `original` keeps
+// what was suggested, so an edited or dropped suggestion is still recorded as missed.
+type TagKind = 'symbol' | 'place' | 'person' | 'body' | 'color'
+type Proposed = { term: string; kind: TagKind; on: boolean; ai: boolean; original?: { term: string; kind: TagKind } }
 
 function TagStep({
   text,
@@ -347,16 +350,16 @@ function TagStep({
           ...(f.label && { label: f.label }),
           ai_suggested: suggested.feeling,
         })),
-        // Dropped suggestions are sent too (kept: false), so we learn which ones missed.
+        // Dropped or corrected suggestions are sent too (kept: false), so we learn which ones missed.
         elements: symbols
-          .filter((s) => s.on || s.kind !== 'yours')
-          .map((s, i) => ({
-            kind: ELEMENT_KIND[s.kind] ?? 'symbol',
-            value: s.term,
-            position: i + 1,
-            ai_suggested: s.kind !== 'yours',
-            kept: s.on,
-          })),
+          .flatMap((s) => {
+            const edited = s.original && (s.original.term !== s.term || s.original.kind !== s.kind)
+            return [
+              ...(edited ? [{ kind: s.original!.kind, value: s.original!.term, ai_suggested: true, kept: false }] : []),
+              ...(s.on || (s.ai && !edited) ? [{ kind: s.kind, value: s.term, ai_suggested: s.ai && !edited, kept: s.on }] : []),
+            ]
+          })
+          .map((e, i) => ({ ...e, position: i + 1 })),
         ...(residue.trim() && { day_residue: [{ note: residue.trim() }] }),
         ...(waking.trim() && { mood_on_waking: waking.trim() }),
       })
@@ -474,30 +477,41 @@ function TagStep({
         />
       </Field>
 
-      <Field term="Symbols" def="places, people and images we noticed; tap to keep or drop" suggested>
+      <Field term="Symbols" def="places, people and images we noticed; tap one to fix it" suggested>
         <div className="flex flex-wrap gap-2">
-          {symbols.map((s, i) => (
-            <button
-              key={s.term}
-              type="button"
-              aria-pressed={s.on}
-              onClick={() => setSymbols((cur) => cur.map((x, j) => (j === i ? { ...x, on: !x.on } : x)))}
-              className={cn(
-                'inline-flex h-9 items-center gap-2 rounded-pill border px-4 text-label transition',
-                s.on ? 'border-accent-soft/40 bg-accent/20 text-fg' : 'border-hairline text-fg-muted',
-              )}
-            >
-              <span lang={/\p{Script=Han}/u.test(s.term) ? 'zh-Hans' : undefined} className={cn(!s.on && 'line-through')}>
-                {s.term}
-              </span>
-              <span className="font-mono text-meta uppercase text-fg-muted">{s.kind}</span>
-            </button>
-          ))}
+          {symbols.map((s, i) =>
+            s.on ? (
+              <TagChip
+                key={i}
+                tag={s}
+                onChange={(term, kind) =>
+                  setSymbols((cur) => cur.map((x, j) => (j === i ? { ...x, term, kind } : x)))
+                }
+                onRemove={() =>
+                  // A suggestion stays, crossed out, so it can be brought back; your own just goes.
+                  setSymbols((cur) => (s.ai ? cur.map((x, j) => (j === i ? { ...x, on: false } : x)) : cur.filter((_, j) => j !== i)))
+                }
+              />
+            ) : (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Bring back ${s.term}`}
+                onClick={() => setSymbols((cur) => cur.map((x, j) => (j === i ? { ...x, on: true } : x)))}
+                className="inline-flex h-9 items-center gap-2 rounded-pill border border-hairline px-4 text-label text-fg-muted transition hover:text-fg"
+              >
+                <span lang={/\p{Script=Han}/u.test(s.term) ? 'zh-Hans' : undefined} className="line-through">
+                  {s.term}
+                </span>
+                <span className="font-mono text-meta uppercase">{KIND_LABEL[s.kind]}</span>
+              </button>
+            ),
+          )}
           <form
             onSubmit={(e) => {
               e.preventDefault()
               const term = adding.trim()
-              if (term && !symbols.some((s) => s.term === term)) setSymbols((cur) => [...cur, { term, kind: 'yours', on: true }])
+              if (term && !symbols.some((s) => s.term === term)) setSymbols((cur) => [...cur, { term, kind: 'symbol', on: true, ai: false }])
               setAdding('')
             }}
             className="inline-flex h-9 items-center gap-1 rounded-pill border border-dashed border-hairline pl-3 pr-1"
@@ -713,6 +727,102 @@ function OwnFeelingChip({
   )
 }
 
+/* ---------- Tags (people, places, images) ---------- */
+
+// A kept tag. Tapping it opens a small popup to fix the words, change its kind, or remove it.
+// Changes apply when the popup closes, whether by Done or by tapping outside.
+function TagChip({
+  tag,
+  onChange,
+  onRemove,
+}: {
+  tag: Proposed
+  onChange: (term: string, kind: TagKind) => void
+  onRemove: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [term, setTerm] = useState(tag.term)
+  const [kind, setKind] = useState(tag.kind)
+  const removing = useRef(false)
+  const isHan = (t: string) => (/\p{Script=Han}/u.test(t) ? 'zh-Hans' : undefined)
+
+  function openChange(next: boolean) {
+    if (next) {
+      setTerm(tag.term)
+      setKind(tag.kind)
+      removing.current = false
+    } else if (!removing.current && term.trim() && (term.trim() !== tag.term || kind !== tag.kind)) {
+      onChange(term.trim(), kind)
+    }
+    setOpen(next)
+  }
+
+  return (
+    <Popover.Root open={open} onOpenChange={openChange}>
+      <Popover.Trigger
+        aria-label={`${tag.term}, ${KIND_LABEL[tag.kind]}. Edit or remove`}
+        className="inline-flex h-9 items-center gap-2 rounded-pill border border-accent-soft/40 bg-accent/20 px-4 text-label text-fg transition"
+      >
+        <span lang={isHan(tag.term)}>{tag.term}</span>
+        <span className="font-mono text-meta uppercase text-fg-muted">{KIND_LABEL[tag.kind]}</span>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner side="bottom" align="start" sideOffset={8} collisionPadding={16} className="z-50">
+          <Popover.Popup className="flex w-72 flex-col gap-4 rounded-card border border-hairline bg-raised/90 p-4 backdrop-blur-glass">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                openChange(false)
+              }}
+            >
+              <input
+                value={term}
+                maxLength={500}
+                onChange={(e) => setTerm(e.target.value)}
+                aria-label="Tag words"
+                lang={isHan(term)}
+                className="h-11 w-full rounded-pill bg-bg px-4 text-body text-fg outline-none"
+              />
+            </form>
+            <div className="flex flex-wrap gap-1" role="group" aria-label="Kind">
+              {(Object.keys(KIND_LABEL) as TagKind[]).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={kind === k}
+                  onClick={() => setKind(k)}
+                  className={cn(
+                    'h-9 rounded-pill border px-4 text-label transition',
+                    kind === k ? 'border-hairline bg-glass text-fg' : 'border-transparent text-fg-secondary hover:text-fg',
+                  )}
+                >
+                  {KIND_LABEL[k]}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center justify-between px-2">
+              <button
+                type="button"
+                onClick={() => {
+                  removing.current = true
+                  onRemove()
+                  setOpen(false)
+                }}
+                className="text-label text-ember"
+              >
+                Remove
+              </button>
+              <button type="button" onClick={() => openChange(false)} className="text-label text-accent-soft">
+                Done
+              </button>
+            </div>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  )
+}
+
 /* ---------- Step 3: Your thoughts, then the reading ---------- */
 
 function MeaningStep({ dreamId }: { dreamId: number }) {
@@ -910,7 +1020,7 @@ function fromSuggestion(s: DreamSuggestion) {
     map: s.map,
     vividness: s.vividness,
     lucidity: String(s.lucidity) as Lucidity,
-    symbols: s.elements.map((e): Proposed => ({ term: e.value, kind: e.kind, on: true })),
+    symbols: s.elements.map((e): Proposed => ({ term: e.value, kind: e.kind, on: true, ai: true, original: { term: e.value, kind: e.kind } })),
     title: s.title,
   }
 }
@@ -965,13 +1075,13 @@ function inferTags(text: string) {
 }
 
 // The keyword guess for elements, used only when Claude can't be reached.
-const KEYWORDS: [RegExp, string | null, string][] = [
+const KEYWORDS: [RegExp, string | null, TagKind][] = [
   [/\b(water|sea|ocean|tide|river|lake|rain)\b|水|海|雨/i, '水', 'symbol'],
   [/\b(greenhouse|house|home|room|courtyard|school|library|tower)\b/i, null, 'place'],
   [/\b(stairs|staircase|door|doors|window)\b/i, null, 'symbol'],
   [/\b(teeth|tooth)\b|牙/i, '掉牙', 'symbol'],
   [/\b(fly|flying|flew)\b/i, 'flying', 'symbol'],
-  [/\b(moths?|birds?|cats?|whales?|fish)\b/i, null, 'creature'],
+  [/\b(moths?|birds?|cats?|whales?|fish)\b/i, null, 'symbol'],
   [/\b(night|moon)\b/i, null, 'symbol'],
   [/\b(mother|father|grandmother|grandfather|sister|brother|friend|stranger)\b/i, null, 'person'],
   [/\b(red|blue|gold|green|violet|white|black)\b/i, null, 'color'],
@@ -983,15 +1093,13 @@ function proposeSymbols(text: string): Proposed[] {
     const m = text.match(re)
     if (!m) continue
     const t = term ?? m[0].toLowerCase()
-    if (!found.some((f) => f.term === t)) found.push({ term: t, kind, on: true })
+    if (!found.some((f) => f.term === t)) found.push({ term: t, kind, on: true, ai: true, original: { term: t, kind } })
   }
   return found
 }
 
-// The tag step's kinds, as the API names them. Creatures are symbols there.
-const ELEMENT_KIND: Record<string, ElementKind> = {
-  symbol: 'symbol', place: 'place', creature: 'symbol', person: 'person', body: 'body', color: 'color', yours: 'symbol',
-}
+// How each tag kind is named on screen. "Image" covers objects, animals and other symbols.
+const KIND_LABEL: Record<TagKind, string> = { symbol: 'Image', place: 'Place', person: 'Person', body: 'Body', color: 'Color' }
 
 function firstSentence(text: string) {
   const s = text.split(/(?<=[.!?。！？])\s*/)[0].trim()
