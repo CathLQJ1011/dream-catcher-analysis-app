@@ -438,3 +438,44 @@ class FeelingPlace(Strict):
 class FeelingPlaced(BaseModel):
     label: str
     emotion: Emotion
+
+
+# ---------- Capture pre-fill: POST /dreams/suggest (decision 23) ----------
+
+
+class SuggestIn(Strict):
+    text: Annotated[str, Field(min_length=1, max_length=20000)]
+    dreamed_on: date
+
+
+class SuggestedEmotion(BaseModel):
+    position: int
+    emotion: Emotion
+    intensity: int
+    label: str | None = None  # the dreamer's own word, when the dream names one
+
+
+class MapPoint(BaseModel):
+    valence: float  # −2 dark … +2 light
+    intensity: float  # 1 quiet … 5 intense
+
+
+class PersonMatch(BaseModel):
+    id: int
+    name: str
+
+
+class SuggestedElement(BaseModel):
+    kind: Literal["symbol", "person", "place", "body", "color"]
+    value: str
+    symbol_code: str | None = None
+    person_match: PersonMatch | None = None
+
+
+class DreamSuggestion(BaseModel):
+    emotions: list[SuggestedEmotion]
+    map: MapPoint
+    vividness: float
+    lucidity: int
+    elements: list[SuggestedElement]
+    title: str

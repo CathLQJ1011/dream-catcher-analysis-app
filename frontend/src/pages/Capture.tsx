@@ -7,7 +7,7 @@ import { DreamOrb } from '@/components/dream/DreamOrb'
 import { EmotionChip } from '@/components/dream/EmotionChip'
 import { EmotionMapInput, type MapValue } from '@/components/dream/EmotionMapInput'
 import { profile } from '@/data/prototypeState'
-import { ApiError, api, type ElementKind } from '@/lib/api'
+import { ApiError, api, type DreamSuggestion, type ElementKind } from '@/lib/api'
 import { DictationError, canDictate, startDictation, type DictationLanguage } from '@/lib/dictation'
 import { parseDate, today } from '@/lib/dates'
 import { EMOTIONS, core, edge, type Emotion } from '@/lib/emotions'
@@ -28,8 +28,21 @@ export default function Capture() {
   const [text, setText] = useState('')
   const [date, setDate] = useState(today)
   const [savedId, setSavedId] = useState<number | null>(null)
+  // Claude's read of the dream for step 2, or why there isn't one.
+  const [read, setRead] = useState<{ suggestion: DreamSuggestion | null; problem: string }>({ suggestion: null, problem: '' })
 
-  if (step === 'reading') return <ReadingStep onDone={() => setStep('tag')} />
+  if (step === 'reading') {
+    return (
+      <ReadingStep
+        text={text}
+        date={date}
+        onDone={(suggestion, problem = '') => {
+          setRead({ suggestion, problem })
+          setStep('tag')
+        }}
+      />
+    )
+  }
   if (step === 'meaning' && savedId !== null) return <MeaningStep dreamId={savedId} />
   return step === 'tell' ? (
     <TellStep text={text} setText={setText} date={date} setDate={setDate} onNext={() => setStep('reading')} />
@@ -37,6 +50,8 @@ export default function Capture() {
     <TagStep
       text={text}
       date={date}
+      suggestion={read.suggestion}
+      readProblem={read.problem}
       onBack={() => setStep('tell')}
       onSaved={(id) => {
         setSavedId(id)
@@ -48,11 +63,28 @@ export default function Capture() {
 
 /* ---------- Between steps: the AI reads the dream ---------- */
 
-function ReadingStep({ onDone }: { onDone: () => void }) {
+function ReadingStep({
+  text,
+  date,
+  onDone,
+}: {
+  text: string
+  date: string
+  onDone: (suggestion: DreamSuggestion | null, problem?: string) => void
+}) {
+  // Claude reads the dream (a few seconds). If it can't, step 2 opens on a rough guess instead.
+  // One request per visit, even when React runs this effect twice in development.
+  const request = useRef<Promise<DreamSuggestion> | null>(null)
   useEffect(() => {
-    const id = window.setTimeout(onDone, 1400)
-    return () => window.clearTimeout(id)
-  }, [onDone])
+    let current = true
+    request.current ??= api.suggestDream(text, date)
+    request.current
+      .then((s) => current && onDone(s))
+      .catch((e) => current && onDone(null, e instanceof ApiError ? e.message : 'Couldn’t read the dream automatically.'))
+    return () => {
+      current = false
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-night px-6 text-center">
@@ -247,25 +279,30 @@ type Proposed = { term: string; kind: string; on: boolean }
 function TagStep({
   text,
   date,
+  suggestion,
+  readProblem,
   onBack,
   onSaved,
 }: {
   text: string
   date: string
+  suggestion: DreamSuggestion | null
+  readProblem: string
   onBack: () => void
   onSaved: (id: number) => void
 }) {
-  // Everything starts from the AI's read of the dream (prototype: keyword cues).
-  const [guess] = useState(() => inferTags(text))
-  // Up to two feelings: one of the 8 orb colors, plus the dreamer's own word if they typed one (decision 10).
-  const [feelings, setFeelings] = useState<Feeling[]>(() => guess.emotions.map((emotion) => ({ emotion })))
+  // Everything starts from Claude's read of the dream (decision 23), or a rough keyword guess
+  // when Claude couldn't be reached.
+  const [start] = useState(() => (suggestion ? fromSuggestion(suggestion) : fromGuess(text)))
+  // Up to two feelings: one of the 8 orb colors, plus the dreamer's own word if they gave one (decision 10).
+  const [feelings, setFeelings] = useState<Feeling[]>(start.feelings)
   const emotions = feelings.map((f) => f.emotion)
-  const [map, setMap] = useState<MapValue>(guess.map)
-  const [vividness, setVividness] = useState(guess.vividness)
-  const [lucidity, setLucidity] = useState<'0' | '1' | '2' | '3'>(guess.lucidity)
-  const [symbols, setSymbols] = useState<Proposed[]>(() => proposeSymbols(text))
+  const [map, setMap] = useState<MapValue>(start.map)
+  const [vividness, setVividness] = useState(start.vividness)
+  const [lucidity, setLucidity] = useState<'0' | '1' | '2' | '3'>(start.lucidity)
+  const [symbols, setSymbols] = useState<Proposed[]>(start.symbols)
   // Which fields still show the AI's suggestion, untouched by the dreamer.
-  const [title, setTitle] = useState(() => firstSentence(text))
+  const [title, setTitle] = useState(start.title)
   const [suggested, setSuggested] = useState({ title: true, feeling: true, map: true, vividness: true, lucidity: true })
   const touch = (k: keyof typeof suggested) => setSuggested((s) => ({ ...s, [k]: false }))
   const [adding, setAdding] = useState('')
@@ -306,8 +343,9 @@ function TagStep({
         emotions: feelings.map((f, i) => ({
           position: i + 1,
           emotion: f.emotion,
+          ...(f.intensity && { intensity: f.intensity }),
           ...(f.label && { label: f.label }),
-          ai_suggested: suggested.feeling && !f.label,
+          ai_suggested: suggested.feeling,
         })),
         // Dropped suggestions are sent too (kept: false), so we learn which ones missed.
         elements: symbols
@@ -356,6 +394,11 @@ function TagStep({
         <Sparkle className="mt-1 size-3 shrink-0 text-accent-soft" strokeWidth={1.5} />
         Filled in from your dream. You know how it felt better than we do, so adjust freely. Nothing is required.
       </p>
+      {readProblem && (
+        <p className="mt-2 text-label font-normal text-ember" role="status">
+          {readProblem} These are rough guesses from keywords.
+        </p>
+      )}
 
       <Field term="Title" def="a name to find it by; change it to anything" suggested={suggested.title}>
         <input
@@ -504,7 +547,8 @@ function TagStep({
 
 /* ---------- Feelings in your own words ---------- */
 
-type Feeling = { emotion: Emotion; label?: string }
+type Feeling = { emotion: Emotion; label?: string; intensity?: number }
+type OwnFeeling = Feeling & { label: string }
 
 // The feeling chips: the 8 orb emotions, then any feelings in the dreamer's own words.
 // "+ Your own word" asks Claude for the closest orb color; tapping the word's chip opens a
@@ -518,11 +562,11 @@ function FeelingPicker({
 }: {
   feelings: Feeling[]
   onToggle: (e: Emotion) => void
-  onAdd: (f: Required<Feeling>) => void
+  onAdd: (f: OwnFeeling) => void
   onRecolor: (label: string, emotion: Emotion) => void
   onRemove: (label: string) => void
 }) {
-  const own = feelings.filter((f): f is Required<Feeling> => Boolean(f.label))
+  const own = feelings.filter((f): f is OwnFeeling => Boolean(f.label))
   const [open, setOpen] = useState(false)
   const [word, setWord] = useState('')
   const [placing, setPlacing] = useState(false)
@@ -610,7 +654,7 @@ function OwnFeelingChip({
   onRecolor,
   onRemove,
 }: {
-  feeling: Required<Feeling>
+  feeling: OwnFeeling
   onRecolor: (label: string, emotion: Emotion) => void
   onRemove: (label: string) => void
 }) {
@@ -857,8 +901,35 @@ function SmallField({
 
 /* ---------- Prototype helpers ---------- */
 
-// Stand-in for the AI's first read of the dream: emotion cues by keyword, then
-// valence/intensity from those emotions, vividness from detail, lucidity from phrasing.
+type Lucidity = '0' | '1' | '2' | '3'
+
+// Step 2's starting values from Claude's read of the dream.
+function fromSuggestion(s: DreamSuggestion) {
+  return {
+    feelings: s.emotions.map((e): Feeling => ({ emotion: e.emotion, intensity: e.intensity, ...(e.label && { label: e.label }) })),
+    map: s.map,
+    vividness: s.vividness,
+    lucidity: String(s.lucidity) as Lucidity,
+    symbols: s.elements.map((e): Proposed => ({ term: e.value, kind: e.kind, on: true })),
+    title: s.title,
+  }
+}
+
+// When Claude can't be reached: a rough guess from keywords, so step 2 isn't empty.
+function fromGuess(text: string) {
+  const guess = inferTags(text)
+  return {
+    feelings: guess.emotions.map((emotion): Feeling => ({ emotion })),
+    map: guess.map,
+    vividness: guess.vividness,
+    lucidity: guess.lucidity,
+    symbols: proposeSymbols(text),
+    title: firstSentence(text),
+  }
+}
+
+// The keyword guess: emotion cues, then valence/intensity from those emotions, vividness
+// from detail, lucidity from phrasing.
 const EMOTION_CUES: [RegExp, Emotion][] = [
   [/\b(afraid|scared|chas\w*|blood|scream\w*|fear)\b/gi, 'fear'],
   [/\b(strange|wrong|uneasy|faceless|lost|couldn'?t)\b/gi, 'unease'],
@@ -889,15 +960,11 @@ function inferTags(text: string) {
       intensity: feel.reduce((s, f) => s + f[1], 0) / feel.length,
     },
     vividness: Math.min(0.95, 0.35 + sentences * 0.08 + colorWords * 0.1),
-    lucidity: (/in control|steer/i.test(text) ? '3' : /realized|knew i was dreaming/i.test(text) ? '2' : '0') as
-      | '0'
-      | '1'
-      | '2'
-      | '3',
+    lucidity: (/in control|steer/i.test(text) ? '3' : /realized|knew i was dreaming/i.test(text) ? '2' : '0') as Lucidity,
   }
 }
 
-// Stand-in for the AI tagging step: spots a few common dream elements by keyword.
+// The keyword guess for elements, used only when Claude can't be reached.
 const KEYWORDS: [RegExp, string | null, string][] = [
   [/\b(water|sea|ocean|tide|river|lake|rain)\b|水|海|雨/i, '水', 'symbol'],
   [/\b(greenhouse|house|home|room|courtyard|school|library|tower)\b/i, null, 'place'],
@@ -923,7 +990,7 @@ function proposeSymbols(text: string): Proposed[] {
 
 // The tag step's kinds, as the API names them. Creatures are symbols there.
 const ELEMENT_KIND: Record<string, ElementKind> = {
-  symbol: 'symbol', place: 'place', creature: 'symbol', person: 'person', color: 'color', yours: 'symbol',
+  symbol: 'symbol', place: 'place', creature: 'symbol', person: 'person', body: 'body', color: 'color', yours: 'symbol',
 }
 
 function firstSentence(text: string) {

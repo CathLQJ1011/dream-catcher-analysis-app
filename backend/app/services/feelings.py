@@ -6,15 +6,13 @@ The word itself is kept as the emotion's `label`; this only picks its color. Not
 from __future__ import annotations
 
 import logging
-import time
-from collections import defaultdict, deque
 
 import anthropic
 from pydantic import BaseModel
 
 from app.errors import ApiError
 from app.schemas import Emotion
-from app.services import readings
+from app.services import ai_limit, readings
 
 log = logging.getLogger(__name__)
 
@@ -39,17 +37,8 @@ class Placement(BaseModel):
     emotion: Emotion
 
 
-# Per-process counter: enough for one server; resets when it restarts.
-_recent: dict[int, deque[float]] = defaultdict(deque)
-
-
 def check_limit(user_id: int) -> None:
-    now, calls = time.monotonic(), _recent[user_id]
-    while calls and now - calls[0] > 3600:
-        calls.popleft()
-    if len(calls) >= HOURLY_LIMIT:
-        raise ApiError(429, "too_many_ai_requests", "That's a lot of AI requests for one hour. Pick a color yourself for now.")
-    calls.append(now)
+    ai_limit.check(user_id, "feelings", HOURLY_LIMIT, "That's a lot of AI requests for one hour. Pick a color yourself for now.")
 
 
 def place(word: str) -> Emotion:

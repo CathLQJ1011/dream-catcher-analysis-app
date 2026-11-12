@@ -205,19 +205,21 @@ Returns `{ dream, exact }` or `204` if nothing matches, using the user's `memori
 
 ```json
 {
-  "emotions": [{ "position": 1, "emotion": "longing", "intensity": 3 }],
+  "emotions": [{ "position": 1, "emotion": "longing", "intensity": 3, "label": "homesick" }],
   "map": { "valence": 0.2, "intensity": 2.6 },
   "vividness": 0.6,
   "lucidity": 0,
   "elements": [
     { "kind": "symbol", "value": "train", "symbol_code": "zg-028" },
-    { "kind": "person", "value": "stranger", "person_match": null }
+    { "kind": "person", "value": "my sister", "person_match": { "id": 3, "name": "my sister" } }
   ],
   "title": "A train with no last stop"
 }
 ```
 
 `/dreams/suggest` saves nothing. The client shows it in step 2 with ✦ marks, then sends the final version with `POST /dreams`. `person_match` suggests an existing person ("the same sister as before?").
+
+**As built (decision 23):** Claude Sonnet 5.5 reads the dream (about 1–3 seconds) and returns up to 2 emotions, the map point, vividness, lucidity, a title and 3–8 elements, all in the dream's own language. `label` is the dreamer's own word for a feeling when the dream names one ("homesick", 想家), otherwise `null`. Element `kind` is `symbol`, `person`, `place`, `body` or `color`. `symbol_code` comes from the dictionary matcher in code, not from Claude, and `person_match` is an exact name match (`{ id, name }` or `null`). Errors: `503 ai_unavailable` when Claude can't answer (the app falls back to a keyword guess) and `429` after 30 an hour.
 
 **Audio is not kept** (decision 15): it is deleted as soon as the transcript exists, and never stored in the database.
 

@@ -182,9 +182,24 @@ export type DreamCreate = {
   vividness?: number
   lucidity?: number
   mood_on_waking?: string
-  emotions?: { position: number; emotion: Emotion; ai_suggested: boolean }[]
+  emotions?: { position: number; emotion: Emotion; intensity?: number; label?: string; ai_suggested: boolean }[]
   elements?: { kind: ElementKind; value: string; position: number; ai_suggested: boolean; kept: boolean }[]
   day_residue?: { note: string }[]
+}
+
+/** Step 2 of Capture, filled in by Claude from the dream (POST /dreams/suggest). Saves nothing. */
+export type DreamSuggestion = {
+  emotions: { position: number; emotion: Emotion; intensity: number; label: string | null }[]
+  map: { valence: number; intensity: number }
+  vividness: number
+  lucidity: number
+  elements: {
+    kind: 'symbol' | 'person' | 'place' | 'body' | 'color'
+    value: string
+    symbol_code: string | null
+    person_match: { id: number; name: string } | null
+  }[]
+  title: string
 }
 
 /* ---------- Endpoints ---------- */
@@ -204,6 +219,8 @@ export const api = {
   /** Searches titles, dream text and tags on the server. */
   searchDreams: (q: string) =>
     request<{ items: DreamSummary[] }>('GET', `/dreams?limit=100&q=${encodeURIComponent(q)}`),
+  suggestDream: (text: string, dreamed_on: string) =>
+    request<DreamSuggestion>('POST', '/dreams/suggest', { text, dreamed_on }),
   getDream: (id: number) => request<DreamOut>('GET', `/dreams/${id}`),
   createDream: (dream: DreamCreate) => request<DreamOut>('POST', '/dreams', dream),
   updateDream: (id: number, changes: { title?: string; text?: string; insight?: string | null }) =>

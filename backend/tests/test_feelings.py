@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from app.errors import ApiError
-from app.services import feelings
+from app.services import ai_limit, feelings
 from tests.test_api import db, make_user  # noqa: F401  (pytest fixtures)
 
 
@@ -19,7 +19,7 @@ def placed(monkeypatch):
         return "unease"
 
     monkeypatch.setattr(feelings, "place", fake)
-    feelings._recent.clear()
+    ai_limit.reset()
     return sent
 
 
@@ -50,7 +50,7 @@ def test_ai_failure_says_pick_yourself(make_user, monkeypatch):
         raise ApiError(503, "ai_unavailable", "Couldn't place that word right now. Pick a color yourself.")
 
     monkeypatch.setattr(feelings, "place", broken)
-    feelings._recent.clear()
+    ai_limit.reset()
     r = make_user().post("/api/v1/feelings/place", json={"label": "guilty"})
     assert r.status_code == 503
     assert r.json()["error"]["code"] == "ai_unavailable"
