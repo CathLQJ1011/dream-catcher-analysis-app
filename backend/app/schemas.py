@@ -6,7 +6,7 @@ from datetime import date, datetime
 from datetime import time as TimeOfDay  # renamed: Reminder has a field called `time`
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 Emotion = Literal["calm", "lucid", "longing", "joy", "fear", "unease", "sadness", "neutral"]
 DreamType = Literal["pleasant", "nightmare", "mixed", "neutral"]
@@ -419,3 +419,22 @@ class ReadingOut(BaseModel):
     error: str | None
     resonated: bool | None
     created_at: datetime
+
+
+# ---------- Feelings in your own words (decision 22) ----------
+
+
+class FeelingPlace(Strict):
+    label: Annotated[str, Field(min_length=1, max_length=64)]
+
+    @field_validator("label")
+    @classmethod
+    def _trim(cls, v: str) -> str:
+        if not (v := v.strip()):
+            raise ValueError("Type a word for the feeling.")
+        return v
+
+
+class FeelingPlaced(BaseModel):
+    label: str
+    emotion: Emotion

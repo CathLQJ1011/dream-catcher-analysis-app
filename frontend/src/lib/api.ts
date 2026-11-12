@@ -83,7 +83,7 @@ export type DreamOut = {
   visibility: 'private' | 'shared'
   insight: string | null
   top_element_id: number | null
-  emotions: { position: number; emotion: Emotion; intensity: number | null; kept: boolean }[]
+  emotions: { position: number; emotion: Emotion; intensity: number | null; label: string | null; kept: boolean }[]
   elements: {
     id: number
     kind: ElementKind
@@ -219,6 +219,9 @@ export const api = {
   share: (id: number, text: string) => request<unknown>('POST', `/dreams/${id}/share`, { text }),
   unshare: (id: number) => request<void>('DELETE', `/dreams/${id}/share`),
   unshareEverything: () => request<void>('DELETE', '/me/shares'),
+
+  /** Your own word for a feeling, placed on the closest of the 8 orb colors by Claude. */
+  placeFeeling: (label: string) => request<{ label: string; emotion: Emotion }>('POST', '/feelings/place', { label }),
 
   readings: (id: number) => request<Reading[]>('GET', `/dreams/${id}/readings`),
   startReadings: (id: number) => request<Reading[]>('POST', `/dreams/${id}/readings`, { traditions: ['jung'] }),

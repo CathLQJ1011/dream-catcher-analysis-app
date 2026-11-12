@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronLeft, Mic, Moon, Plus, Sparkle, Square, X } from 'lucide-react'
+import { Popover } from '@base-ui/react/popover'
 import { Button } from '@/components/ui/button'
 import { Segmented } from '@/components/app/Segmented'
 import { DreamOrb } from '@/components/dream/DreamOrb'
@@ -9,7 +10,7 @@ import { profile } from '@/data/prototypeState'
 import { ApiError, api, type ElementKind } from '@/lib/api'
 import { DictationError, canDictate, startDictation, type DictationLanguage } from '@/lib/dictation'
 import { parseDate, today } from '@/lib/dates'
-import { EMOTIONS, type Emotion } from '@/lib/emotions'
+import { EMOTIONS, core, edge, type Emotion } from '@/lib/emotions'
 import { navigate } from '@/lib/router'
 import { cn } from '@/lib/utils'
 
@@ -256,7 +257,9 @@ function TagStep({
 }) {
   // Everything starts from the AI's read of the dream (prototype: keyword cues).
   const [guess] = useState(() => inferTags(text))
-  const [emotions, setEmotions] = useState<Emotion[]>(guess.emotions)
+  // Up to two feelings: one of the 8 orb colors, plus the dreamer's own word if they typed one (decision 10).
+  const [feelings, setFeelings] = useState<Feeling[]>(() => guess.emotions.map((emotion) => ({ emotion })))
+  const emotions = feelings.map((f) => f.emotion)
   const [map, setMap] = useState<MapValue>(guess.map)
   const [vividness, setVividness] = useState(guess.vividness)
   const [lucidity, setLucidity] = useState<'0' | '1' | '2' | '3'>(guess.lucidity)
@@ -274,8 +277,19 @@ function TagStep({
 
   const toggleEmotion = (e: Emotion) => {
     touch('feeling')
-    setEmotions((cur) => (cur.includes(e) ? cur.filter((x) => x !== e) : [...cur, e].slice(-2)))
+    setFeelings((cur) =>
+      cur.some((f) => f.emotion === e && !f.label)
+        ? cur.filter((f) => f.emotion !== e || f.label)
+        : [...cur, { emotion: e }].slice(-2),
+    )
   }
+  const addOwn = (f: Feeling) => {
+    touch('feeling')
+    setFeelings((cur) => [...cur, f].slice(-2))
+  }
+  const recolorOwn = (label: string, emotion: Emotion) =>
+    setFeelings((cur) => cur.map((f) => (f.label === label ? { ...f, emotion } : f)))
+  const removeOwn = (label: string) => setFeelings((cur) => cur.filter((f) => f.label !== label))
 
   async function save() {
     setSaving(true)
@@ -289,7 +303,12 @@ function TagStep({
         intensity: Math.round(map.intensity),
         vividness,
         lucidity: Number(lucidity),
-        emotions: emotions.map((emotion, i) => ({ position: i + 1, emotion, ai_suggested: suggested.feeling })),
+        emotions: feelings.map((f, i) => ({
+          position: i + 1,
+          emotion: f.emotion,
+          ...(f.label && { label: f.label }),
+          ai_suggested: suggested.feeling && !f.label,
+        })),
         // Dropped suggestions are sent too (kept: false), so we learn which ones missed.
         elements: symbols
           .filter((s) => s.on || s.kind !== 'yours')
@@ -352,11 +371,13 @@ function TagStep({
       </Field>
 
       <Field term="Feeling" def="the emotions that stayed with you, up to two" suggested={suggested.feeling}>
-        <div className="-ml-4 flex flex-wrap gap-1">
-          {EMOTIONS.map((e) => (
-            <EmotionChip key={e.id} emotion={e.id} label={e.label} selected={emotions.includes(e.id)} onClick={() => toggleEmotion(e.id)} />
-          ))}
-        </div>
+        <FeelingPicker
+          feelings={feelings}
+          onToggle={toggleEmotion}
+          onAdd={addOwn}
+          onRecolor={recolorOwn}
+          onRemove={removeOwn}
+        />
       </Field>
 
       <Field term="Where it sat" def="drag the orb: how dark or light, how quiet or intense" suggested={suggested.map}>
@@ -478,6 +499,173 @@ function TagStep({
         )}
       </section>
     </CaptureFrame>
+  )
+}
+
+/* ---------- Feelings in your own words ---------- */
+
+type Feeling = { emotion: Emotion; label?: string }
+
+// The feeling chips: the 8 orb emotions, then any feelings in the dreamer's own words.
+// "+ Your own word" asks Claude for the closest orb color; tapping the word's chip opens a
+// small popup to move it to another color or remove it (decision 22).
+function FeelingPicker({
+  feelings,
+  onToggle,
+  onAdd,
+  onRecolor,
+  onRemove,
+}: {
+  feelings: Feeling[]
+  onToggle: (e: Emotion) => void
+  onAdd: (f: Required<Feeling>) => void
+  onRecolor: (label: string, emotion: Emotion) => void
+  onRemove: (label: string) => void
+}) {
+  const own = feelings.filter((f): f is Required<Feeling> => Boolean(f.label))
+  const [open, setOpen] = useState(false)
+  const [word, setWord] = useState('')
+  const [placing, setPlacing] = useState(false)
+  const [problem, setProblem] = useState('')
+
+  async function add() {
+    const typed = word.trim()
+    if (!typed || placing) return
+    setProblem('')
+    if (!own.some((f) => f.label.toLowerCase() === typed.toLowerCase())) {
+      setPlacing(true)
+      try {
+        const placed = await api.placeFeeling(typed)
+        onAdd({ emotion: placed.emotion, label: placed.label })
+      } catch (e) {
+        // Still keep the word; it starts gray and the dreamer picks its color from its chip.
+        onAdd({ emotion: 'neutral', label: typed })
+        setProblem(e instanceof ApiError ? e.message : 'Couldn’t pick a color. Tap the word to choose one.')
+      }
+      setPlacing(false)
+    }
+    setWord('')
+    setOpen(false)
+  }
+
+  return (
+    <>
+      <div className="-ml-4 flex flex-wrap gap-1">
+        {EMOTIONS.map((e) => (
+          <EmotionChip
+            key={e.id}
+            emotion={e.id}
+            label={e.label}
+            selected={feelings.some((f) => f.emotion === e.id && !f.label)}
+            onClick={() => onToggle(e.id)}
+          />
+        ))}
+        {own.map((f) => (
+          <OwnFeelingChip key={f.label} feeling={f} onRecolor={onRecolor} onRemove={onRemove} />
+        ))}
+        {!open && (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="inline-flex items-center gap-2 rounded-pill border border-dashed border-hairline px-4 py-2 text-label text-fg-secondary transition hover:text-fg"
+          >
+            <Plus className="size-3" strokeWidth={1.5} />
+            Your own word
+          </button>
+        )}
+      </div>
+      {open && (
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void add()
+          }}
+        >
+          <input
+            autoFocus
+            value={word}
+            maxLength={64}
+            onChange={(e) => setWord(e.target.value)}
+            aria-label="Your own word for the feeling"
+            placeholder="guilty, 怀旧, floaty…"
+            className="h-11 min-w-0 flex-1 rounded-pill bg-raised px-4 text-body text-fg outline-none placeholder:text-fg-muted"
+          />
+          <Button type="submit" variant="ghost" disabled={!word.trim() || placing}>
+            {placing ? 'Placing…' : 'Add'}
+          </Button>
+        </form>
+      )}
+      {problem && (
+        <p className="text-label font-normal text-ember" role="alert">
+          {problem}
+        </p>
+      )}
+    </>
+  )
+}
+
+function OwnFeelingChip({
+  feeling: f,
+  onRecolor,
+  onRemove,
+}: {
+  feeling: Required<Feeling>
+  onRecolor: (label: string, emotion: Emotion) => void
+  onRemove: (label: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const current = EMOTIONS.find((e) => e.id === f.emotion)?.label
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger
+        render={
+          <EmotionChip
+            emotion={f.emotion}
+            label={f.label}
+            selected
+            aria-label={`${f.label}, ${current}. Change color or remove`}
+            trailing={<ChevronDown className="size-3 text-fg-muted" strokeWidth={1.5} />}
+          />
+        }
+      />
+      <Popover.Portal>
+        <Popover.Positioner side="bottom" align="start" sideOffset={8} collisionPadding={16} className="z-50">
+          <Popover.Popup className="flex flex-col gap-2 rounded-card border border-hairline bg-raised/90 p-4 backdrop-blur-glass">
+            <div className="flex gap-1">
+              {EMOTIONS.map((e) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  aria-label={e.label}
+                  aria-pressed={f.emotion === e.id}
+                  onClick={() => {
+                    onRecolor(f.label, e.id)
+                    setOpen(false)
+                  }}
+                  className={cn(
+                    'flex size-8 items-center justify-center rounded-pill border transition',
+                    f.emotion === e.id ? 'border-fg-muted' : 'border-transparent hover:border-hairline',
+                  )}
+                >
+                  <span
+                    className="size-4 rounded-pill"
+                    style={{ background: `radial-gradient(circle at 35% 30%, ${core(e.id)}, ${edge(e.id)})` }}
+                  />
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center justify-between gap-4 px-2">
+              <span className="text-label font-normal text-fg-secondary">{current}</span>
+              <button type="button" onClick={() => onRemove(f.label)} className="text-label text-ember">
+                Remove
+              </button>
+            </div>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
   )
 }
 

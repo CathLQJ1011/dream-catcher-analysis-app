@@ -184,6 +184,7 @@ Capture → Dream Detail → Journal → Patterns (Emotion, Symbols, Rhythms fir
 ### Capture is three steps
 1. **Tell it.** Only the dream on screen: the record orb, or "Write it instead", plus a small **"Night of · Last night"** pill to change the date. The transcript appears as you speak and stays editable.
 2. **Tag it, already filled in.** After a short "Reading your dream…" moment, the AI has pre-filled feeling, map position, vividness, lucidity and symbols. A ✦ marks each suggestion until you change it, and one line says to adjust freely to match how it felt. Each field label defines its own term, with the term itself slightly bolder ("**Vividness** · how clear and detailed the dream felt…"). "Save dream" saves it here.
+   - *Your own word* (decision 22): under the feeling chips, "+ Your own word" takes a feeling in any language ("guilty", 怀旧). Claude places it on the closest orb color, and it joins the chip list as "guilty ▾". Tapping it opens a small popup with the 8 colors in one row and Remove. It counts as one of the two feelings, and Dream detail shows it as "guilty · Unease".
 3. **What do you think it means?** Optional: your own first reading, which the AI reading builds on. "Read my dream" (or "Skip") starts the reading and opens the dream at its Readings section, where the orb shimmers until the reading is ready. × opens the dream without a reading.
 
 ### Sharing

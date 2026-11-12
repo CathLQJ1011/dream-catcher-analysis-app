@@ -201,6 +201,7 @@ Returns `{ dream, exact }` or `204` if nothing matches, using the user's `memori
 |---|---|---|---|
 | `POST` | `/transcribe` **(AI)** | audio file (`multipart/form-data`, up to 10 minutes) | `{ text, language, seconds }` |
 | `POST` | `/dreams/suggest` **(AI)** | `{ text, dreamed_on }` | the step-2 pre-fill below |
+| `POST` | `/feelings/place` **(AI)** | `{ label }` (1–64 characters, any language) | `{ label, emotion }`: the closest of the 8 orb emotions for your own word (decision 22). Saves nothing; `503 ai_unavailable` if Claude can't answer, `429` after 60 an hour |
 
 ```json
 {

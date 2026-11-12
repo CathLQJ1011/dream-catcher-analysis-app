@@ -16,6 +16,8 @@ export type JournalDream = SampleDream & {
   topCode?: string
   /** Your own reading, written before the AI's (whole dreams only). */
   insight?: string
+  /** The feelings in order, with your own word for each when you gave one (whole dreams only). */
+  feelings?: { emotion: Emotion; label: string | null }[]
 }
 
 const isHan = (s: string) => /\p{Script=Han}/u.test(s)
@@ -70,10 +72,10 @@ export function fromDream(d: DreamOut): JournalDream {
   const kept = d.elements.filter((e) => e.kept)
   const top = kept.find((e) => e.id === d.top_element_id)
   // Strongest feeling first, then the next different one, as the API's lists do.
-  const feelings = d.emotions
+  const felt = d.emotions
     .filter((e) => e.kept)
     .sort((a, b) => (b.intensity ?? 0) - (a.intensity ?? 0) || a.position - b.position)
-    .map((e) => e.emotion)
+  const feelings = felt.map((e) => e.emotion)
   const emotion: Emotion = feelings[0] ?? 'neutral'
   const of = (...kinds: string[]) => kept.filter((e) => kinds.includes(e.kind)).map((e) => e.value)
 
@@ -90,6 +92,7 @@ export function fromDream(d: DreamOut): JournalDream {
     colors: paletteFrom(of('color')),
     topCode: top?.symbol?.code,
     insight: d.insight ?? '',
+    feelings: felt.map((e) => ({ emotion: e.emotion, label: e.label })),
   }
 }
 

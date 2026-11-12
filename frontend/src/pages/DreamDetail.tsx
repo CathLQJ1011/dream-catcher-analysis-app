@@ -436,10 +436,14 @@ function ReadingCard({
 
 /* ---------- Anatomy ---------- */
 
-function Anatomy({ dream }: { dream: SampleDream }) {
+function Anatomy({ dream }: { dream: JournalDream }) {
   const label = (id: string) => EMOTIONS.find((e) => e.id === id)?.label
+  // Your own word leads when you gave one: "guilty · Unease".
+  const felt = dream.feelings?.length
+    ? dream.feelings.slice(0, 2).map((f) => (f.label ? `${f.label} · ${label(f.emotion)}` : label(f.emotion)))
+    : [label(dream.emotion), dream.blend && label(dream.blend)]
   const rows: [string, ReactNode][] = [
-    ['Feeling', [label(dream.emotion), dream.blend && label(dream.blend)].filter(Boolean).join(' + ')],
+    ['Feeling', felt.filter(Boolean).join(' + ')],
     ['Where it sat', `${['Very dark', 'Dark', 'Neither', 'Light', 'Very light'][dream.valence + 2]} · intensity ${dream.intensity}/5`],
     ['Vividness', `${Math.round(dream.vividness * 100)}%`],
     ['Lucidity', ['Not aware', 'Hazy', 'Aware', 'In control'][dream.lucidity]],
