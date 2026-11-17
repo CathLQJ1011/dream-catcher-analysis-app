@@ -1,4 +1,4 @@
-"""AI readings of a dream (docs/api-contract.md, Readings). Jung only for now; 周公 comes next."""
+"""AI readings of a dream (docs/api-contract.md, Readings): 周公解梦 and Jungian."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from app.services import readings
 
 router = APIRouter(tags=["readings"])
 
-READY = {"jung"}
+READY = ("zhougong", "jung")  # also the order the cards appear in
 
 
 @router.post("/dreams/{dream_id}/readings", status_code=202, response_model=list[ReadingOut])
@@ -22,11 +22,12 @@ def start_readings(
 ):
     dream = own_dream(db, user, dream_id)
     traditions = (body or ReadingsCreate()).traditions
+    if traditions is None:  # the traditions turned on in Me, or every ready one if none of them is ready yet
+        traditions = [t for t in READY if t in user.traditions] or list(READY)
     if not_yet := [t for t in traditions if t not in READY]:
         raise ApiError(422, "tradition_not_ready", f"{', '.join(not_yet)} readings aren't available yet.", "traditions")
     started = readings.start(db, dream, traditions)
-    for r in started:
-        tasks.add_task(readings.run_reading, r.id)
+    tasks.add_task(readings.run_readings, [r.id for r in started])
     return [readings.to_out(r) for r in started]
 
 

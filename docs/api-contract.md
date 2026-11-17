@@ -282,7 +282,7 @@ A Jungian reading follows the output shape in `jungian-model.md`. A 周公 readi
 
 Readings take several seconds, hence `202` and polling. Changing the dream text marks old readings as out of date rather than deleting them.
 
-**Built so far (Jung only).** `traditions` defaults to `["jung"]`; asking for `zhougong` returns `422 tradition_not_ready` until it's built. Each reading comes back as:
+**As built (decision 24).** Without `traditions`, the ones turned on in Me are started (`user.traditions`, both by default), 周公 first. Each reading comes back as:
 
 ```json
 {
@@ -295,6 +295,7 @@ Readings take several seconds, hence `202` and polling. Changing the dream text 
 }
 ```
 
+- A 周公 reading's `details` is `{ headline: { image, symbol_code }, images: [{ image, symbol_code, classical_line, meaning, term_zh, source }], reading, confidence_note }`. `classical_line` is always one of the entry's own lines (checked on the server) or `null`; `symbol_code: null` marks an open reading of an image the classical text doesn't cover. `source` is the printed edition and page, e.g. `《周公解梦全书》1995版 第 187 页`. `symbols` lists the entries cited.
 - `details` is the full Jungian output shape from `jungian-model.md`, plus a `headline` image that every reading picks, even when no glossary entry matches. A motif or headline with `glossary_id: null` is an open reading of the dream itself; `symbols` lists only the glossary entries actually cited.
 - `status` is `pending` while Claude writes it (poll `GET`), then `ready` or `failed`; a failed one has a short `error` for the dreamer. Asking again while one is pending returns the same one.
 - `GET` returns the newest reading per tradition. Older ones stay in the database, with the `model` and `prompt_version` that wrote them.

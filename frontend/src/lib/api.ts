@@ -62,6 +62,7 @@ export type User = {
   profile_orb: ProfileOrb
   capture_with: 'voice' | 'text'
   memories: 'all' | 'gentle' | 'off'
+  traditions: Tradition[]
   stats: { dreams: number; since: string | null; shared: number; top_emotions: Emotion[] }
 }
 
@@ -154,6 +155,24 @@ export type JungDetails = {
   confidence_note: string
 }
 
+/** A 周公 reading: classical lines checked against the dictionary on the server (decision 24). */
+export type ZhougongDetails = {
+  headline: { image: string; symbol_code: string | null }
+  images: {
+    image: string
+    /** Null for an open reading: an image the classical text doesn't cover. */
+    symbol_code: string | null
+    classical_line: string | null
+    meaning: string
+    term_zh: string | null
+    source: string | null
+  }[]
+  reading: string
+  confidence_note: string
+}
+
+export type Tradition = 'zhougong' | 'jung' | 'neuro'
+
 export type Reading = {
   id: number
   tradition: 'jung' | 'zhougong'
@@ -163,8 +182,8 @@ export type Reading = {
   confidence_note: string | null
   /** Glossary entries the reading cites. */
   symbols: SymbolRef[]
-  /** The full structured reading; empty until it's ready. */
-  details: Partial<JungDetails>
+  /** The full structured reading; empty until it's ready. Its shape depends on the tradition. */
+  details: Partial<JungDetails> & Partial<Omit<ZhougongDetails, 'headline'>>
   error: string | null
   resonated: boolean | null
   created_at: string
@@ -241,7 +260,9 @@ export const api = {
   placeFeeling: (label: string) => request<{ label: string; emotion: Emotion }>('POST', '/feelings/place', { label }),
 
   readings: (id: number) => request<Reading[]>('GET', `/dreams/${id}/readings`),
-  startReadings: (id: number) => request<Reading[]>('POST', `/dreams/${id}/readings`, { traditions: ['jung'] }),
+  /** Without `traditions`, the server starts the ones turned on in Me. */
+  startReadings: (id: number, traditions?: Reading['tradition'][]) =>
+    request<Reading[]>('POST', `/dreams/${id}/readings`, traditions ? { traditions } : {}),
   readingFeedback: (readingId: number, resonated: boolean) =>
     request<void>('POST', `/readings/${readingId}/feedback`, { resonated }),
 }

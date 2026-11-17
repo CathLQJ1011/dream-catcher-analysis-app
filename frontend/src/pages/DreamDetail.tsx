@@ -16,6 +16,7 @@ import { api, ApiError, type Reading, type RelatedDream } from '@/lib/api'
 import { EMOTIONS } from '@/lib/emotions'
 import { parseDate } from '@/lib/dates'
 import { navigate } from '@/lib/router'
+import { useSession } from '@/lib/session'
 
 // Dream Detail (docs/screens.md §2). The dream text is the hero; everything else
 // is quieter and below it. Your own reading comes before the AI's.
@@ -244,8 +245,11 @@ function DreamImage({ dream }: { dream: SampleDream }) {
 /* ---------- Readings: yours first ---------- */
 
 const TRADITION_NAMES: Record<Reading['tradition'], string> = { jung: 'Jungian', zhougong: 'Zhougong · 周公' }
+const TRADITION_ORDER: Reading['tradition'][] = ['zhougong', 'jung'] // 周公 first (decision 2)
 
 function Readings({ dream }: { dream: JournalDream }) {
+  const session = useSession()
+  const turnedOn = typeof session === 'object' && session ? session.traditions : []
   const [insight, setInsight] = useState(dream.insight ?? '')
   const [readings, setReadings] = useState<Reading[] | null>(null)
   const [error, setError] = useState('')
@@ -277,19 +281,27 @@ function Readings({ dream }: { dream: JournalDream }) {
     return () => window.clearTimeout(timer)
   }, [pending, readings, dream.id])
 
-  async function interpret() {
+  // Without traditions: every one turned on in Me. "Try again" on one card asks for just that one.
+  async function interpret(traditions?: Reading['tradition'][]) {
     setError('')
     try {
       // Your own reading is saved first, so the AI can build on it.
       if (insight.trim() !== (dream.insight ?? '')) await api.updateDream(dream.id, { insight: insight.trim() || null })
-      const started = await api.startReadings(dream.id)
-      setReadings((old) => [...(old ?? []).filter((r) => !started.some((s) => s.tradition === r.tradition)), ...started])
+      const started = await api.startReadings(dream.id, traditions)
+      // Keep the cards in tradition order (周公 first), whichever one restarted.
+      setReadings((old) =>
+        [...(old ?? []).filter((r) => !started.some((s) => s.tradition === r.tradition)), ...started].sort(
+          (a, b) => TRADITION_ORDER.indexOf(a.tradition) - TRADITION_ORDER.indexOf(b.tradition),
+        ),
+      )
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Couldn’t start the reading. Try again.')
     }
   }
 
   const revealed = (readings?.length ?? 0) > 0
+  // A dream read before 周公 existed (or before you turned it on) can add the missing tradition.
+  const missing = TRADITION_ORDER.filter((t) => turnedOn.includes(t) && !readings?.some((r) => r.tradition === t))
 
   return (
     <Section title="Readings" id="readings">
@@ -307,15 +319,26 @@ function Readings({ dream }: { dream: JournalDream }) {
       {revealed ? (
         <div className="-mx-6 mt-2 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2 [scrollbar-width:none]">
           {readings!.map((r) => (
-            <ReadingCard key={r.tradition} dream={dream} reading={r} wide={readings!.length === 1} onAgain={interpret} />
+            <ReadingCard
+              key={r.tradition}
+              dream={dream}
+              reading={r}
+              wide={readings!.length === 1}
+              onAgain={() => interpret([r.tradition])}
+            />
           ))}
         </div>
       ) : (
         readings !== null && (
-          <Button variant="ghost" className="self-start" onClick={interpret}>
+          <Button variant="ghost" className="self-start" onClick={() => interpret()}>
             {insight.trim() ? 'Compare with the readings' : 'Skip to the readings'}
           </Button>
         )
+      )}
+      {revealed && missing.length > 0 && (
+        <Button variant="ghost" className="self-start" onClick={() => interpret(missing)}>
+          Add the {missing.map((t) => TRADITION_NAMES[t]).join(' and ')} reading
+        </Button>
       )}
       {error && (
         <p className="text-label font-normal text-ember" role="alert">
@@ -383,6 +406,22 @@ function ReadingCard({
                   {/* Says where each idea comes from: the curated glossary, or read from the dream itself. */}
                   <span className="font-mono text-meta uppercase text-fg-muted">
                     {cited(m.glossary_id) ? `Jung glossary · ${cited(m.glossary_id)!.term_en}` : 'Open reading'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {d.images && d.images.length > 0 && (
+            <ul className="flex flex-col gap-4">
+              {d.images.map((img) => (
+                <li key={img.image} className="flex flex-col gap-1">
+                  <span className="font-serif text-body italic">{img.image}</span>
+                  {/* The classical line is checked against the dictionary on the server, never written by the AI. */}
+                  {img.classical_line && <span className="font-serif text-body text-fg">「{img.classical_line}」</span>}
+                  <span className="text-label font-normal text-fg-secondary">{img.meaning}</span>
+                  <span className="font-mono text-meta uppercase text-fg-muted">
+                    {img.symbol_code ? [img.term_zh, img.source].filter(Boolean).join(' · ') : 'Open reading · not in the classical text'}
                   </span>
                 </li>
               ))}

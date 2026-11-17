@@ -399,8 +399,29 @@ class JungReading(Strict):
     confidence_note: str
 
 
+class ZhougongHeadline(Strict):
+    image: str  # the dreamer's own word for it
+    symbol_code: str | None  # a zg-… code when the dictionary covers it
+
+
+class ZhougongImage(Strict):
+    image: str  # the dreamer's own word
+    symbol_code: str | None  # None: an open reading, not classical text
+    classical_line: str | None  # copied from the entry; checked in code, never invented
+    meaning: str
+
+
+class ZhougongReading(Strict):
+    """What the model returns for a 周公 reading (prompts/zhougong_v1.md)."""
+
+    headline: ZhougongHeadline
+    images: list[ZhougongImage]
+    reading: str
+    confidence_note: str
+
+
 class ReadingsCreate(Strict):
-    traditions: list[Tradition] = ["jung"]
+    traditions: list[Tradition] | None = None  # None: the traditions turned on in Me
 
 
 class ReadingFeedback(Strict):
