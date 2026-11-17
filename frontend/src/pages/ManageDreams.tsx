@@ -75,7 +75,7 @@ export default function ManageDreams() {
   return (
     <div className="relative min-h-screen overflow-x-clip">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-screen bg-night" />
-      <div className="relative mx-auto w-full max-w-md px-6 pb-24 pt-6">
+      <div className="relative mx-auto w-full max-w-md px-6 pb-24 pt-screen">
         <div className="mb-8 flex items-center justify-between">
           <button
             type="button"

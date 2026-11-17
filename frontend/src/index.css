@@ -58,3 +58,14 @@
     @apply outline outline-2 outline-offset-2 outline-accent-soft;
   }
 }
+
+/* Room for the iPhone status bar when the app runs full-screen (viewport-fit=cover).
+   Browsers report no inset, so these stay at the usual spacing there. */
+@layer utilities {
+  .pt-screen {
+    padding-top: max(theme(spacing.6), calc(env(safe-area-inset-top) + theme(spacing.2)));
+  }
+  .pt-screen-tabs {
+    padding-top: max(theme(spacing.12), calc(env(safe-area-inset-top) + theme(spacing.6)));
+  }
+}

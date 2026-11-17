@@ -10,7 +10,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="relative min-h-screen overflow-x-clip">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-screen bg-night" />
-      <div className="relative mx-auto w-full max-w-md px-6 pb-32 pt-12">{children}</div>
+      <div className="relative mx-auto w-full max-w-md px-6 pb-32 pt-screen-tabs">{children}</div>
       <BottomNav />
     </div>
   )
