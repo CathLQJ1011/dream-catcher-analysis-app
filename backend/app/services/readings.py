@@ -98,7 +98,7 @@ def to_out(r: Interpretation) -> ReadingOut:
         reading=r.reading, confidence_note=r.confidence_note,
         symbols=[SymbolRef.model_validate(s) for s in sorted(r.symbols, key=lambda s: s.code)],
         details={k: v for k, v in r.output.items() if k != "error"},
-        error=r.output.get("error"), resonated=r.resonated, created_at=r.created_at,
+        error=r.output.get("error"), resonance=r.resonance, created_at=r.created_at,
     )
 
 

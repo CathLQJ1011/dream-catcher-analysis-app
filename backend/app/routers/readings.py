@@ -37,10 +37,15 @@ def get_readings(dream_id: int, user: CurrentUser, db: Db):
     return [readings.to_out(r) for r in readings.latest(dream)]
 
 
-@router.post("/readings/{reading_id}/feedback", status_code=204)
-def reading_feedback(reading_id: int, body: ReadingFeedback, user: CurrentUser, db: Db):
+def own_reading(db: Db, user: CurrentUser, reading_id: int) -> Interpretation:
     r = db.get(Interpretation, reading_id)
     if r is None or r.dream.user_id != user.id or r.dream.deleted_at is not None:
         raise not_found("reading")
-    r.resonated = body.resonated
+    return r
+
+
+@router.post("/readings/{reading_id}/feedback", status_code=204)
+def reading_feedback(reading_id: int, body: ReadingFeedback, user: CurrentUser, db: Db):
+    r = own_reading(db, user, reading_id)
+    r.resonance = body.resonance
     db.commit()

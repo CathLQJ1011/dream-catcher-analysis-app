@@ -352,6 +352,7 @@ class Interpretation(Base):
     __table_args__ = (
         one_of("tradition", ("zhougong", "jung", "neuro"), "interpretation_tradition_valid"),
         one_of("status", ("pending", "ready", "failed"), "interpretation_status_valid"),
+        CheckConstraint("resonance BETWEEN 1 AND 5", name="interpretation_resonance_valid"),
     )
 
     id: Mapped[int] = pk()
@@ -366,7 +367,8 @@ class Interpretation(Base):
     confidence_note: Mapped[str | None] = mapped_column(Text)
     model: Mapped[str | None] = mapped_column(String(64))
     prompt_version: Mapped[str | None] = mapped_column(String(32))
-    resonated: Mapped[bool | None] = mapped_column(Boolean)  # "Does this resonate?"
+    # "Does this resonate?" on a 1 (not at all) to 5 (deeply) slider; the measure of reading quality.
+    resonance: Mapped[int | None] = mapped_column(SmallInteger)
     created_at: Mapped[datetime] = created_at()
 
     dream: Mapped[Dream] = relationship(back_populates="interpretations")

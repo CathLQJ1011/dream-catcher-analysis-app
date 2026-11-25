@@ -360,14 +360,18 @@ function ReadingCard({
   wide: boolean
   onAgain: () => void
 }) {
-  const [resonated, setResonated] = useState(r.resonated)
+  const [resonance, setResonance] = useState(r.resonance)
   const d = r.details
   const cited = (code: string | null) => r.symbols.find((s) => s.code === code)
 
-  function answer(value: boolean) {
-    setResonated(value)
-    api.readingFeedback(r.id, value).catch(() => setResonated(r.resonated))
-  }
+  // Saved a moment after the slider stops moving, so dragging doesn't send every step.
+  useEffect(() => {
+    if (resonance === null || resonance === r.resonance) return
+    const timer = window.setTimeout(() => {
+      api.readingFeedback(r.id, resonance).catch(() => setResonance(r.resonance))
+    }, 600)
+    return () => window.clearTimeout(timer)
+  }, [resonance, r.id, r.resonance])
 
   return (
     <GlassCard className={`flex shrink-0 snap-start flex-col gap-4 ${wide ? 'w-full' : 'w-[85%]'}`}>
@@ -452,24 +456,40 @@ function ReadingCard({
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-label font-normal text-fg-muted">
-              <span>Does this resonate?</span>
-              {[true, false].map((value) => (
-                <button
-                  key={String(value)}
-                  type="button"
-                  onClick={() => answer(value)}
-                  aria-pressed={resonated === value}
-                  className={`h-8 rounded-pill px-3 ${resonated === value ? 'bg-raised text-fg' : 'hover:text-fg'}`}
-                >
-                  {value ? 'Yes' : 'Not really'}
-                </button>
-              ))}
-            </div>
+            <ResonanceSlider value={resonance} onChange={setResonance} />
           )}
         </>
       )}
     </GlassCard>
+  )
+}
+
+const RESONANCE = ['Not at all', 'A little', 'Somewhat', 'Mostly', 'Deeply']
+
+/** "Does this resonate?" from 1 (not at all) to 5 (deeply). It starts unanswered, in the middle. */
+function ResonanceSlider({ value, onChange }: { value: number | null; onChange: (v: number) => void }) {
+  return (
+    <label className="flex flex-col gap-2">
+      <span className="flex items-baseline justify-between gap-4 text-label font-normal text-fg-muted">
+        <span>Does this resonate?</span>
+        <span className={value === null ? '' : 'text-fg'}>{value === null ? 'Slide to answer' : RESONANCE[value - 1]}</span>
+      </span>
+      <input
+        type="range"
+        min={1}
+        max={5}
+        step={1}
+        value={value ?? 3}
+        onChange={(e) => onChange(Number(e.target.value))}
+        aria-label="Does this resonate?"
+        aria-valuetext={value === null ? 'Not answered' : RESONANCE[value - 1]}
+        className={`w-full accent-accent ${value === null ? 'opacity-50' : ''}`}
+      />
+      <span className="flex justify-between font-mono text-meta uppercase text-fg-muted">
+        <span>{RESONANCE[0]}</span>
+        <span>{RESONANCE[4]}</span>
+      </span>
+    </label>
   )
 }
 

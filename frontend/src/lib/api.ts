@@ -185,7 +185,8 @@ export type Reading = {
   /** The full structured reading; empty until it's ready. Its shape depends on the tradition. */
   details: Partial<JungDetails> & Partial<Omit<ZhougongDetails, 'headline'>>
   error: string | null
-  resonated: boolean | null
+  /** "Does this resonate?": 1 not at all … 5 deeply; null until answered. */
+  resonance: number | null
   created_at: string
 }
 
@@ -263,6 +264,6 @@ export const api = {
   /** Without `traditions`, the server starts the ones turned on in Me. */
   startReadings: (id: number, traditions?: Reading['tradition'][]) =>
     request<Reading[]>('POST', `/dreams/${id}/readings`, traditions ? { traditions } : {}),
-  readingFeedback: (readingId: number, resonated: boolean) =>
-    request<void>('POST', `/readings/${readingId}/feedback`, { resonated }),
+  readingFeedback: (readingId: number, resonance: number) =>
+    request<void>('POST', `/readings/${readingId}/feedback`, { resonance }),
 }

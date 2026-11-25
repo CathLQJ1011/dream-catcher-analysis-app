@@ -158,10 +158,13 @@ def test_other_peoples_readings_are_hidden(make_user, claude):
     [reading] = me.post(f"/api/v1/dreams/{dream['id']}/readings", json=JUNG).json()
     assert other.post(f"/api/v1/dreams/{dream['id']}/readings", json=JUNG).status_code == 404
     assert other.get(f"/api/v1/dreams/{dream['id']}/readings").status_code == 404
-    assert other.post(f"/api/v1/readings/{reading['id']}/feedback", json={"resonated": True}).status_code == 404
+    assert other.post(f"/api/v1/readings/{reading['id']}/feedback", json={"resonance": 4}).status_code == 404
 
-    assert me.post(f"/api/v1/readings/{reading['id']}/feedback", json={"resonated": True}).status_code == 204
-    assert me.get(f"/api/v1/dreams/{dream['id']}/readings").json()[0]["resonated"] is True
+    assert me.post(f"/api/v1/readings/{reading['id']}/feedback", json={"resonance": 4}).status_code == 204
+    assert me.get(f"/api/v1/dreams/{dream['id']}/readings").json()[0]["resonance"] == 4
+    # The slider runs 1 (not at all) to 5 (deeply).
+    for bad in (0, 6):
+        assert me.post(f"/api/v1/readings/{reading['id']}/feedback", json={"resonance": bad}).status_code == 422
 
 
 def test_hourly_limit(make_user, claude, db):

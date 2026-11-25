@@ -266,7 +266,7 @@ Read-only for users. Entries are changed only by editing `data/symbols/*.csv` an
 |---|---|---|---|
 | `POST` | `/dreams/{id}/readings` | `{ traditions?: ["zhougong", "jung"] }` | `202` + readings in progress |
 | `GET` | `/dreams/{id}/readings` | | each tradition's reading (shape below), or `status: "pending"` |
-| `POST` | `/readings/{id}/feedback` | `{ resonated: true }` | `204`; the "Does this resonate?" answer |
+| `POST` | `/readings/{id}/feedback` | `{ resonance: 4 }` | `204`; the "Does this resonate?" slider, 1 (not at all) to 5 (deeply) (decision 25) |
 
 A Jungian reading follows the output shape in `jungian-model.md`. A 周公 reading:
 
@@ -291,7 +291,7 @@ Readings take several seconds, hence `202` and polling. Changing the dream text 
   "confidence_note": "Based only on the dream text…",
   "symbols": [{ "code": "jg-002", "term_zh": "阴影", "term_en": "shadow" }],
   "details": { "headline": { "image": "homework", "glossary_id": null }, "dream_shape": {}, "dream_ego": "…", "motifs": [], "compensation": "…", "series_note": null, "questions": [], "dreamwork": null, "reading": "…", "confidence_note": "…" },
-  "error": null, "resonated": null, "created_at": "…"
+  "error": null, "resonance": null, "created_at": "…"
 }
 ```
 

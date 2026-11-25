@@ -425,7 +425,7 @@ class ReadingsCreate(Strict):
 
 
 class ReadingFeedback(Strict):
-    resonated: bool
+    resonance: Annotated[int, Field(ge=1, le=5)]  # 1 not at all … 5 deeply
 
 
 class ReadingOut(BaseModel):
@@ -438,7 +438,7 @@ class ReadingOut(BaseModel):
     symbols: list[SymbolRef]  # glossary entries the reading cites
     details: dict  # the full structured reading (JungReading for Jung)
     error: str | None
-    resonated: bool | None
+    resonance: int | None
     created_at: datetime
 
 
