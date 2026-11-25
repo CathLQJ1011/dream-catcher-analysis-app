@@ -12,7 +12,7 @@ import { DreamRow } from '@/components/dream/DreamRow'
 import { generatedImages } from '@/data/prototypeState'
 import { fromDream, fromSummary, type JournalDream } from '@/data/journal'
 import type { SampleDream } from '@/data/sampleDreams'
-import { api, ApiError, type Reading, type RelatedDream } from '@/lib/api'
+import { api, ApiError, type FollowUp, type Reading, type RelatedDream } from '@/lib/api'
 import { EMOTIONS } from '@/lib/emotions'
 import { parseDate } from '@/lib/dates'
 import { navigate } from '@/lib/router'
@@ -458,9 +458,85 @@ function ReadingCard({
           ) : (
             <ResonanceSlider value={resonance} onChange={setResonance} />
           )}
+
+          <FollowUps reading={r} />
         </>
       )}
     </GlassCard>
+  )
+}
+
+/** Ask about a reading; Claude answers in that card's tradition (decision 26). */
+function FollowUps({ reading: r }: { reading: Reading }) {
+  const [thread, setThread] = useState<FollowUp[]>(r.follow_ups ?? [])
+  const [question, setQuestion] = useState('')
+  const [asking, setAsking] = useState<string | null>(null) // the question being answered
+  const [error, setError] = useState('')
+
+  async function ask() {
+    const q = question.trim()
+    if (!q || asking) return
+    setAsking(q)
+    setQuestion('')
+    setError('')
+    try {
+      const answered = await api.askFollowUp(r.id, q)
+      setThread((t) => [...t, answered])
+    } catch (e) {
+      setQuestion(q) // give the question back, so it can be sent again
+      setError(e instanceof ApiError ? e.message : 'Couldn’t ask right now. Try again.')
+    } finally {
+      setAsking(null)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4 border-t border-hairline pt-4">
+      {thread.map((f) => (
+        <div key={f.id} className="flex flex-col gap-2">
+          <p className="self-end rounded-card bg-raised px-4 py-2 text-label font-normal text-fg">{f.question}</p>
+          <p className="text-label font-normal text-fg-secondary">{f.answer}</p>
+        </div>
+      ))}
+      {asking && (
+        <div className="flex flex-col gap-2">
+          <p className="self-end rounded-card bg-raised px-4 py-2 text-label font-normal text-fg">{asking}</p>
+          <span className="font-mono text-meta uppercase text-fg-muted">Thinking…</span>
+        </div>
+      )}
+      <form
+        className="flex items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          ask()
+        }}
+      >
+        <textarea
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault()
+              ask()
+            }
+          }}
+          rows={1}
+          maxLength={1000}
+          disabled={asking !== null}
+          placeholder={thread.length ? 'Ask more…' : 'Ask about it…'}
+          aria-label="Ask about this reading"
+          className="min-h-10 flex-1 resize-none rounded-card bg-raised px-4 py-2 text-label font-normal text-fg outline-none placeholder:text-fg-muted"
+        />
+        <Button type="submit" variant="ghost" disabled={asking !== null || !question.trim()}>
+          Ask
+        </Button>
+      </form>
+      {error && (
+        <p className="text-label font-normal text-ember" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   )
 }
 

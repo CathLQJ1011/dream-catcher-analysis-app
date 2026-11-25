@@ -373,3 +373,21 @@ class Interpretation(Base):
 
     dream: Mapped[Dream] = relationship(back_populates="interpretations")
     symbols: Mapped[list[Symbol]] = relationship(secondary=interpretation_symbols)
+    follow_ups: Mapped[list[FollowUp]] = relationship(
+        back_populates="interpretation", cascade="all, delete-orphan", order_by="FollowUp.id"
+    )
+
+
+class FollowUp(Base):
+    """A question the dreamer asked about a reading, and Claude's answer (decision 26)."""
+
+    __tablename__ = "follow_ups"
+
+    id: Mapped[int] = pk()
+    interpretation_id: Mapped[int] = mapped_column(ForeignKey("interpretations.id", ondelete="CASCADE"), index=True)
+    question: Mapped[str] = mapped_column(Text)
+    answer: Mapped[str] = mapped_column(Text)
+    model: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = created_at()
+
+    interpretation: Mapped[Interpretation] = relationship(back_populates="follow_ups")

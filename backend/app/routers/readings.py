@@ -8,8 +8,8 @@ from app.db.models import Interpretation
 from app.deps import CurrentUser, Db
 from app.errors import ApiError, not_found
 from app.routers.dreams import own_dream
-from app.schemas import ReadingFeedback, ReadingOut, ReadingsCreate
-from app.services import readings
+from app.schemas import FollowUpIn, FollowUpOut, ReadingFeedback, ReadingOut, ReadingsCreate
+from app.services import follow_ups, readings
 
 router = APIRouter(tags=["readings"])
 
@@ -49,3 +49,8 @@ def reading_feedback(reading_id: int, body: ReadingFeedback, user: CurrentUser, 
     r = own_reading(db, user, reading_id)
     r.resonance = body.resonance
     db.commit()
+
+
+@router.post("/readings/{reading_id}/follow-ups", status_code=201, response_model=FollowUpOut)
+def ask_follow_up(reading_id: int, body: FollowUpIn, user: CurrentUser, db: Db):
+    return follow_ups.ask(db, own_reading(db, user, reading_id), body.question)

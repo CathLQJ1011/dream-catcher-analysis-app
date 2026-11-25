@@ -171,6 +171,8 @@ export type ZhougongDetails = {
   confidence_note: string
 }
 
+export type FollowUp = { id: number; question: string; answer: string; created_at: string }
+
 export type Tradition = 'zhougong' | 'jung' | 'neuro'
 
 export type Reading = {
@@ -187,6 +189,8 @@ export type Reading = {
   error: string | null
   /** "Does this resonate?": 1 not at all … 5 deeply; null until answered. */
   resonance: number | null
+  /** Questions the dreamer asked under the card, oldest first. */
+  follow_ups: FollowUp[]
   created_at: string
 }
 
@@ -264,6 +268,9 @@ export const api = {
   /** Without `traditions`, the server starts the ones turned on in Me. */
   startReadings: (id: number, traditions?: Reading['tradition'][]) =>
     request<Reading[]>('POST', `/dreams/${id}/readings`, traditions ? { traditions } : {}),
+  /** Claude answers in the reading's own tradition; takes a few seconds. */
+  askFollowUp: (readingId: number, question: string) =>
+    request<FollowUp>('POST', `/readings/${readingId}/follow-ups`, { question }),
   readingFeedback: (readingId: number, resonance: number) =>
     request<void>('POST', `/readings/${readingId}/feedback`, { resonance }),
 }

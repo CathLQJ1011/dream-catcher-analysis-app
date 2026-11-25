@@ -428,6 +428,25 @@ class ReadingFeedback(Strict):
     resonance: Annotated[int, Field(ge=1, le=5)]  # 1 not at all … 5 deeply
 
 
+class FollowUpIn(Strict):
+    question: Annotated[str, Field(min_length=1, max_length=1000)]
+
+    @field_validator("question")
+    @classmethod
+    def _trim(cls, v: str) -> str:
+        if not (v := v.strip()):
+            raise ValueError("Type a question.")
+        return v
+
+
+class FollowUpOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    question: str
+    answer: str
+    created_at: datetime
+
+
 class ReadingOut(BaseModel):
     id: int
     tradition: Tradition
@@ -439,6 +458,7 @@ class ReadingOut(BaseModel):
     details: dict  # the full structured reading (JungReading for Jung)
     error: str | None
     resonance: int | None
+    follow_ups: list[FollowUpOut]
     created_at: datetime
 
 

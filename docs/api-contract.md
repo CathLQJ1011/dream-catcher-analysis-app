@@ -267,6 +267,7 @@ Read-only for users. Entries are changed only by editing `data/symbols/*.csv` an
 | `POST` | `/dreams/{id}/readings` | `{ traditions?: ["zhougong", "jung"] }` | `202` + readings in progress |
 | `GET` | `/dreams/{id}/readings` | | each tradition's reading (shape below), or `status: "pending"` |
 | `POST` | `/readings/{id}/feedback` | `{ resonance: 4 }` | `204`; the "Does this resonate?" slider, 1 (not at all) to 5 (deeply) (decision 25) |
+| `POST` | `/readings/{id}/follow-ups` **(AI)** | `{ question }` (1–1000 characters) | `201` + the follow-up `{ id, question, answer, created_at }`: Claude answers in that reading's tradition, in a few seconds (decision 26). At most 10 per reading (`409 too_many_follow_ups`); `503 ai_unavailable` if Claude can't answer; `429` after 30 an hour |
 
 A Jungian reading follows the output shape in `jungian-model.md`. A 周公 reading:
 
@@ -291,12 +292,13 @@ Readings take several seconds, hence `202` and polling. Changing the dream text 
   "confidence_note": "Based only on the dream text…",
   "symbols": [{ "code": "jg-002", "term_zh": "阴影", "term_en": "shadow" }],
   "details": { "headline": { "image": "homework", "glossary_id": null }, "dream_shape": {}, "dream_ego": "…", "motifs": [], "compensation": "…", "series_note": null, "questions": [], "dreamwork": null, "reading": "…", "confidence_note": "…" },
-  "error": null, "resonance": null, "created_at": "…"
+  "error": null, "resonance": null, "follow_ups": [], "created_at": "…"
 }
 ```
 
 - A 周公 reading's `details` is `{ headline: { image, symbol_code }, images: [{ image, symbol_code, classical_line, meaning, term_zh, source }], reading, confidence_note }`. `classical_line` is always one of the entry's own lines (checked on the server) or `null`; `symbol_code: null` marks an open reading of an image the classical text doesn't cover. `source` is the printed edition and page, e.g. `《周公解梦全书》1995版 第 187 页`. `symbols` lists the entries cited.
 - `details` is the full Jungian output shape from `jungian-model.md`, plus a `headline` image that every reading picks, even when no glossary entry matches. A motif or headline with `glossary_id: null` is an open reading of the dream itself; `symbols` lists only the glossary entries actually cited.
+- `follow_ups` is the conversation under the card, oldest first: `[{ id, question, answer, created_at }]`.
 - `status` is `pending` while Claude writes it (poll `GET`), then `ready` or `failed`; a failed one has a short `error` for the dreamer. Asking again while one is pending returns the same one.
 - `GET` returns the newest reading per tradition. Older ones stay in the database, with the `model` and `prompt_version` that wrote them.
 - The reading is written in the language of the dream, not chosen by `Accept-Language` yet.
