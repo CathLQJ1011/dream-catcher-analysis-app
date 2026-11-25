@@ -9,8 +9,7 @@ import { DreamOrb } from '@/components/dream/DreamOrb'
 import { EmotionChip } from '@/components/dream/EmotionChip'
 import { MonthGrid } from '@/components/dream/MonthGrid'
 import { fromSummary, loadJournal, type JournalDream } from '@/data/journal'
-import { profile } from '@/data/prototypeState'
-import { ApiError, api, type ProfileOrb } from '@/lib/api'
+import { ApiError, api, type ProfileOrb, type Tradition, type User } from '@/lib/api'
 import { EMOTIONS, type Emotion } from '@/lib/emotions'
 import { formatShortDate, parseDate, today } from '@/lib/dates'
 import { navigate } from '@/lib/router'
@@ -36,12 +35,27 @@ export default function Me() {
       .catch(() => {}) // the orb falls back to Auto without them
   }, [])
 
-  const [traditions, setTraditions] = useState({ jung: true, zhougong: true, neuro: true })
-  const [depth, setDepth] = useState<'minimal' | 'full'>('minimal')
-  const [start, setStart] = useState(profile.captureWith)
-  const [memories, setMemories] = useState(profile.memories)
-  const [reminder, setReminder] = useState(true)
   const [status, setStatus] = useState('')
+
+  // Settings live on your account (decision 14), so they follow you to every device.
+  // Each change shows at once and is saved straight away; if saving fails, it goes back.
+  async function save(changes: Parameters<typeof api.updateMe>[0]) {
+    if (!user) return
+    setUser({ ...user, ...changes } as User)
+    setStatus('')
+    try {
+      setUser(await api.updateMe(changes))
+    } catch (e) {
+      setUser(user)
+      setStatus(e instanceof ApiError ? e.message : 'Couldn’t save that. Try again.')
+    }
+  }
+  const traditions = user?.traditions ?? []
+  const toggle = (t: Tradition, on: boolean) =>
+    save({ traditions: on ? [...traditions.filter((x) => x !== t), t] : traditions.filter((x) => x !== t) })
+  const memories = user?.memories ?? 'gentle'
+  const depth = user?.check_in ?? 'minimal'
+  const reminder = user?.reminder ?? { enabled: false, time: null }
   const [editOpen, setEditOpen] = useState(false)
   const name = user?.display_name || FALLBACK_NAME
   const orb = user?.profile_orb ?? { mode: 'auto' }
@@ -112,13 +126,13 @@ export default function Me() {
 
       <Group title="Readings">
         <Row label="Jungian">
-          <Switch label="Jungian readings" checked={traditions.jung} onChange={(v) => setTraditions({ ...traditions, jung: v })} />
+          <Switch label="Jungian readings" checked={traditions.includes('jung')} onChange={(v) => toggle('jung', v)} />
         </Row>
         <Row label="周公解梦 Zhougong">
-          <Switch label="Zhougong readings" checked={traditions.zhougong} onChange={(v) => setTraditions({ ...traditions, zhougong: v })} />
+          <Switch label="Zhougong readings" checked={traditions.includes('zhougong')} onChange={(v) => toggle('zhougong', v)} />
         </Row>
         <Row label="Neuroscience">
-          <Switch label="Neuroscience readings" checked={traditions.neuro} onChange={(v) => setTraditions({ ...traditions, neuro: v })} />
+          <Switch label="Neuroscience readings" checked={traditions.includes('neuro')} onChange={(v) => toggle('neuro', v)} />
         </Row>
         <Row label="Vedic" hint="Coming later">
           <Switch label="Vedic readings" checked={false} onChange={() => {}} disabled />
@@ -128,19 +142,16 @@ export default function Me() {
       <Group title="Journal">
         <Row
           label="This time last year"
-          hint={{ on: 'Every dream, nightmares included', calm: 'Skips nightmares and intense fear', off: 'Never shown' }[memories]}
+          hint={{ all: 'Every dream, nightmares included', gentle: 'Skips nightmares and intense fear', off: 'Never shown' }[memories]}
         >
           <Segmented
             size="sm"
             label="Show dreams from this time last year"
             value={memories}
-            onChange={(v) => {
-              profile.memories = v
-              setMemories(v)
-            }}
+            onChange={(v) => save({ memories: v })}
             options={[
-              { value: 'on', label: 'All' },
-              { value: 'calm', label: 'Gentle' },
+              { value: 'all', label: 'All' },
+              { value: 'gentle', label: 'Gentle' },
               { value: 'off', label: 'Off' },
             ]}
           />
@@ -152,11 +163,8 @@ export default function Me() {
           <Segmented
             size="sm"
             label="Start capture with"
-            value={start}
-            onChange={(v) => {
-              profile.captureWith = v // the Capture button in the tab bar follows this
-              setStart(v)
-            }}
+            value={user?.capture_with ?? 'voice'}
+            onChange={(v) => save({ capture_with: v })} // the Capture button in the tab bar follows this
             options={[
               { value: 'voice', label: 'Voice' },
               { value: 'text', label: 'Text' },
@@ -164,10 +172,14 @@ export default function Me() {
           />
         </Row>
         <Row label="Check-in" hint={depth === 'minimal' ? 'Feeling and symbols only' : 'Every field, for deep journaling'}>
-          <Segmented size="sm" label="Check-in depth" value={depth} onChange={setDepth} options={[{ value: 'minimal', label: 'Minimal' }, { value: 'full', label: 'Full' }]} />
+          <Segmented size="sm" label="Check-in depth" value={depth} onChange={(v) => save({ check_in: v })} options={[{ value: 'minimal', label: 'Minimal' }, { value: 'full', label: 'Full' }]} />
         </Row>
-        <Row label="Morning reminder" hint={reminder ? 'A quiet nudge at 7:30' : 'Off'}>
-          <Switch label="Morning reminder" checked={reminder} onChange={setReminder} />
+        <Row label="Morning reminder" hint={reminder.enabled ? `A quiet nudge at ${(reminder.time ?? '07:30').slice(0, 5)}` : 'Off'}>
+          <Switch
+            label="Morning reminder"
+            checked={reminder.enabled}
+            onChange={(v) => save({ reminder: { enabled: v, time: reminder.time ?? '07:30' } })}
+          />
         </Row>
       </Group>
 

@@ -63,6 +63,8 @@ export type User = {
   capture_with: 'voice' | 'text'
   memories: 'all' | 'gentle' | 'off'
   traditions: Tradition[]
+  check_in: 'minimal' | 'full'
+  reminder: { enabled: boolean; time: string | null }
   stats: { dreams: number; since: string | null; shared: number; top_emotions: Emotion[] }
 }
 
@@ -233,7 +235,8 @@ export const api = {
   login: (email: string, password: string) => request<User>('POST', '/auth/login', { email, password }),
   logout: () => request<void>('POST', '/auth/logout'),
   me: () => request<User>('GET', '/me'),
-  updateMe: (changes: { display_name?: string; profile_orb?: ProfileOrb }) => request<User>('PATCH', '/me', changes),
+  updateMe: (changes: Partial<Pick<User, 'display_name' | 'profile_orb' | 'capture_with' | 'memories' | 'traditions' | 'check_in' | 'reminder'>>) =>
+    request<User>('PATCH', '/me', changes),
 
   listDreams: (cursor?: string) =>
     request<{ items: DreamSummary[]; next_cursor: string | null }>(

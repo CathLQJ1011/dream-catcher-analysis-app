@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { profile } from '@/data/prototypeState'
 import { api, ApiError, setUnauthorizedHandler, type User } from '@/lib/api'
 
 // Who is signed in. 'loading' until the first /me answers; null means signed out.
@@ -8,8 +9,15 @@ type Session = User | null | 'loading'
 let current: Session = 'loading'
 const listeners = new Set<() => void>()
 
+const MEMORIES = { all: 'on', gentle: 'calm', off: 'off' } as const
+
 function set(next: Session) {
   current = next
+  // The Capture button, Capture and Journal still read these from the prototype's profile object.
+  if (next && next !== 'loading') {
+    profile.captureWith = next.capture_with
+    profile.memories = MEMORIES[next.memories]
+  }
   listeners.forEach((l) => l())
 }
 
